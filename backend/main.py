@@ -13,6 +13,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from supabase import create_client
 
+from ai_pipeline import run_analysis
+
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -37,17 +39,22 @@ class AnalyzeRequest(BaseModel):
     url: str
 
 
-async def run_mock_analysis(job_id: str, url: str) -> None:
-    await asyncio.sleep(10)
+async def analyze_url_background(job_id: str, url: str) -> None:
+    try:
+        result = await asyncio.to_thread(run_analysis, url)
+        status = "completed"
+    except Exception as e:
+        result = {"error": str(e)}
+        status = "error"
 
     def _insert():
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
         client.table("analysis_jobs").insert(
             {
                 "id": job_id,
-                "status": "completed",
+                "status": status,
                 "url": url,
-                "result": {"status": "completed", "url": url},
+                "result": result,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
         ).execute()
@@ -69,5 +76,5 @@ async def analyze(
     background_tasks: BackgroundTasks,
 ) -> JSONResponse:
     job_id = str(uuid.uuid4())
-    background_tasks.add_task(run_mock_analysis, job_id, payload.url)
+    background_tasks.add_task(analyze_url_background, job_id, payload.url)
     return JSONResponse({"job_id": job_id, "status": "processing"}, status_code=202)

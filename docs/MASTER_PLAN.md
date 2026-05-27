@@ -54,3 +54,30 @@ The Python backend implements a Progressive Disclosure model utilizing modular i
 - **Data Ingestion (No RAG):** For the MVP, do not build a Vector Database. The backend will feed scraped Firecrawl markdown directly into the Lyzr prompt context window.
 - **Phase 1.5 Caching:** The FastAPI `/analyze` route must check Supabase for an exact competitor domain match from the last 7 days. If a cached report exists, it must return it instantly and bypass the Lyzr generation pipeline entirely.
 
+## 11. Current Implementation State (as of 2026-05-28)
+
+### Phase 1 MVP — COMPLETE
+
+- `POST /api/v1/analyze` (FastAPI, port 8000) returns 202 + `job_id` immediately. Background task `analyze_url_background(job_id, url)` in `backend/main.py` runs the pipeline off the event loop via `asyncio.to_thread`, then inserts the result row into Supabase `analysis_jobs` (columns: `id uuid PK`, `status text`, `url text`, `result jsonb`, `created_at timestamptz`).
+- Next.js `frontend/app/page.tsx` (`'use client'`) polls `analysis_jobs` via `@supabase/supabase-js` every 2 s, displays a spinner while `status = processing`, flips to a green card on `status = completed`.
+- Rate limiting: `slowapi` (10/minute) on FastAPI; CORS locked to `http://localhost:3000`.
+- Env vars required: backend → `SUPABASE_URL`, `SUPABASE_KEY`, `GEMINI_API_KEY`; frontend → `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+### Phase 2 Step 1 — COMPLETE
+
+- **`backend/ai_pipeline.py`** — Lyzr Automata `LinearSyncPipeline` with three agents chained via `input_tasks`:
+  - **Researcher** (`gemini-2.5-flash`) — extracts pricing tiers, hiring signals, SEO keywords, and community sentiment from raw text.
+  - **Strategist** (`gemini-2.5-flash`) — identifies top 3–5 GTM white-space opportunities for a challenger brand.
+  - **Execution** (`gemini-2.5-flash`) — formats the final output as a strict JSON object with keys: `summary`, `competitors`, `white_space_opportunities`, `recommended_channels`, `content_recommendations`, `hiring_signals`.
+- **Transport:** `lyzr-automata` uses `OpenAIModel` pointed at `https://generativelanguage.googleapis.com/v1beta/openai/` with the `GEMINI_API_KEY`. The `google-generativeai` package is **not** required.
+- **Input:** Currently hardcoded `MOCK_SCRAPED_TEXT` (Acme GTM Tools fixture). The `url` parameter is accepted by `run_analysis(url)` but not yet used to fetch live data.
+- **Output parsing:** `run_analysis` strips accidental markdown fences and falls back to `{"raw": ..., "url": ...}` on JSON parse failure.
+- **Dependencies added:** `openai`, `lyzr-automata` in `backend/requirements.txt`. `guardrails-ai` is commented out (security hardening not yet started).
+
+### Next Step: Phase 2 Step 2 — Firecrawl Integration
+
+Replace `MOCK_SCRAPED_TEXT` with a live Firecrawl scrape of the submitted URL:
+1. Add `firecrawl-py` to `backend/requirements.txt` and `FIRECRAWL_API_KEY` to `backend/.env.example`.
+2. In `backend/ai_pipeline.py`, add `scrape_url(url: str) -> str` using `FirecrawlApp.scrape_url(url, params={"pageOptions": {"onlyMainContent": True}})`.
+3. In `run_analysis(url)`, call `scrape_url(url)` and pass its output as the researcher task's input before running the pipeline.
+4. Verify end-to-end: submit a real competitor URL → uvicorn logs show live markdown → Supabase `result` column contains real competitive analysis → frontend card flips green.

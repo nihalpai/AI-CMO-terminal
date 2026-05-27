@@ -22,7 +22,7 @@ export default function Home() {
       try {
         const { data, error } = await supabase
           .from('analysis_jobs')
-          .select('status')
+          .select('status, result')
           .eq('id', jobId)
           .single()
 
@@ -32,6 +32,11 @@ export default function Home() {
           clearInterval(intervalRef.current!)
           intervalRef.current = null
           setAppStatus('complete')
+        } else if (data?.status === 'error') {
+          clearInterval(intervalRef.current!)
+          intervalRef.current = null
+          setErrorMessage((data.result as { error?: string })?.error ?? 'Analysis failed in the background.')
+          setAppStatus('error')
         }
       } catch {
         // transient error — keep polling
