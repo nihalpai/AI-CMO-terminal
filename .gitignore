@@ -1,0 +1,14 @@
+# Python Virtual Environment
+.venv/
+venv/
+
+# Environment Variables (Secrets)
+.env
+.env.local
+
+# Next.js / Frontend
+node_modules/
+.next/
+
+# MacOS garbage files
+.DS_Store

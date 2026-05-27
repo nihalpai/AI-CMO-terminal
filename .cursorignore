@@ -1,0 +1,13 @@
+# Ignore massive engine folders so Claude doesn't waste tokens reading them
+.venv/
+venv/
+node_modules/
+.next/
+.git/
+
+# Ignore image and media files
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.mp4
