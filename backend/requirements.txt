@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+supabase
+slowapi
+lyzr-automata
+guardrails-ai
+python-dotenv
+pydantic
