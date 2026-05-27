@@ -5,10 +5,39 @@ import { supabase } from '@/lib/supabaseClient'
 
 type AppStatus = 'idle' | 'loading' | 'polling' | 'complete' | 'error'
 
+type AnalysisReport = {
+  summary: string
+  competitors: string[]
+  white_space_opportunities: string[]
+  recommended_channels: string[]
+  content_recommendations: string[]
+  hiring_signals: string[]
+}
+
+function ReportCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4">
+        {title}
+      </h2>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex gap-2 text-sm text-gray-300 leading-relaxed">
+            <span className="text-indigo-500 mt-0.5 shrink-0">·</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function Home() {
   const [url, setUrl] = useState('')
   const [appStatus, setAppStatus] = useState<AppStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+  const [report, setReport] = useState<AnalysisReport | null>(null)
+  const [analyzedUrl, setAnalyzedUrl] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -31,6 +60,7 @@ export default function Home() {
         if (data?.status === 'completed') {
           clearInterval(intervalRef.current!)
           intervalRef.current = null
+          setReport(data.result as AnalysisReport)
           setAppStatus('complete')
         } else if (data?.status === 'error') {
           clearInterval(intervalRef.current!)
@@ -50,6 +80,7 @@ export default function Home() {
 
     setAppStatus('loading')
     setErrorMessage('')
+    setReport(null)
 
     try {
       const res = await fetch('http://localhost:8000/api/v1/analyze', {
@@ -61,12 +92,64 @@ export default function Home() {
       if (!res.ok) throw new Error(`Backend returned ${res.status}`)
 
       const { job_id } = await res.json()
+      setAnalyzedUrl(url.trim())
       setAppStatus('polling')
       startPolling(job_id)
     } catch (err) {
       setAppStatus('error')
       setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
     }
+  }
+
+  function handleReset() {
+    setAppStatus('idle')
+    setReport(null)
+    setUrl('')
+    setAnalyzedUrl('')
+    setErrorMessage('')
+  }
+
+  if (appStatus === 'complete' && report) {
+    return (
+      <main className="min-h-screen bg-gray-950 px-6 py-10">
+        <div className="max-w-5xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">GTM Intelligence Report</h1>
+              <p className="mt-1 text-sm text-gray-500 truncate max-w-lg">{analyzedUrl}</p>
+            </div>
+            <button
+              onClick={handleReset}
+              className="shrink-0 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 transition-colors"
+            >
+              New Analysis
+            </button>
+          </div>
+
+          {/* Executive Summary */}
+          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4">
+              Executive Summary
+            </h2>
+            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {report.summary}
+            </p>
+          </div>
+
+          {/* 2-col grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ReportCard title="Target Competitors" items={report.competitors} />
+            <ReportCard title="White Space Opportunities" items={report.white_space_opportunities} />
+            <ReportCard title="Recommended Channels" items={report.recommended_channels} />
+            <ReportCard title="Hiring Signals" items={report.hiring_signals} />
+          </div>
+
+          {/* Content Recommendations — full width */}
+          <ReportCard title="Content Recommendations" items={report.content_recommendations} />
+        </div>
+      </main>
+    )
   }
 
   const isBusy = appStatus === 'loading' || appStatus === 'polling'
@@ -132,15 +215,6 @@ export default function Home() {
                 ? 'Sending request to backend...'
                 : 'Waiting for analysis to complete...'}
             </span>
-          </div>
-        )}
-
-        {appStatus === 'complete' && (
-          <div className="mt-6 p-4 rounded-lg bg-green-900/40 border border-green-700">
-            <p className="text-green-400 font-bold">Analysis Complete!</p>
-            <p className="mt-1 text-sm text-green-300/70">
-              Your report has been processed and saved.
-            </p>
           </div>
         )}
 
