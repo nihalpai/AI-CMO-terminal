@@ -2,6 +2,11 @@
 .venv/
 venv/
 
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+
 # Environment Variables (Secrets)
 .env
 .env.local

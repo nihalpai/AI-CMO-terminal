@@ -4,6 +4,9 @@ venv/
 node_modules/
 .next/
 .git/
+__pycache__/
+*.pyc
+*.pyo
 
 # Ignore image and media files
 *.png
