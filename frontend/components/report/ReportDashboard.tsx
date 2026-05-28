@@ -1,7 +1,10 @@
-import { Crosshair, Lightbulb, Radio, TrendingUp, Users } from 'lucide-react'
 import { ReportHeader } from './ReportHeader'
-import { ExecutiveSummaryCard } from './ExecutiveSummaryCard'
-import { InsightCard } from './InsightCard'
+import { ExecutiveBriefCard } from './ExecutiveBriefCard'
+import { CompetitorMatrix } from './CompetitorMatrix'
+import { HiringSignalsCard } from './HiringSignalsCard'
+import { ChannelsCard } from './ChannelsCard'
+import { WhiteSpaceCard } from './WhiteSpaceCard'
+import { ContentRecommendationsCard } from './ContentRecommendationsCard'
 
 type AnalysisReport = {
   summary: string
@@ -20,40 +23,18 @@ type ReportDashboardProps = {
 
 export function ReportDashboard({ report, analyzedUrl, onReset }: ReportDashboardProps) {
   return (
-    <main className="min-h-screen bg-background px-6 py-10">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <main className="min-h-screen bg-background px-6 py-8">
+      <div className="max-w-7xl mx-auto space-y-5">
         <ReportHeader analyzedUrl={analyzedUrl} onReset={onReset} />
 
-        <ExecutiveSummaryCard summary={report.summary} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <InsightCard
-            title="Target Competitors"
-            icon={Users}
-            items={report.competitors}
-          />
-          <InsightCard
-            title="White Space Opportunities"
-            icon={Crosshair}
-            items={report.white_space_opportunities}
-          />
-          <InsightCard
-            title="Recommended Channels"
-            icon={Radio}
-            items={report.recommended_channels}
-          />
-          <InsightCard
-            title="Hiring Signals"
-            icon={TrendingUp}
-            items={report.hiring_signals}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <ExecutiveBriefCard summary={report.summary} />
+          <CompetitorMatrix competitors={report.competitors} />
+          <HiringSignalsCard items={report.hiring_signals} />
+          <ChannelsCard items={report.recommended_channels} />
+          <WhiteSpaceCard items={report.white_space_opportunities} />
+          <ContentRecommendationsCard items={report.content_recommendations} />
         </div>
-
-        <InsightCard
-          title="Content Recommendations"
-          icon={Lightbulb}
-          items={report.content_recommendations}
-        />
       </div>
     </main>
   )
