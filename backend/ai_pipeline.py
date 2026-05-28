@@ -17,24 +17,24 @@ _firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 
 
 def scrape_website(url: str) -> str:
-    result = _firecrawl.scrape_url(url, params={"pageOptions": {"onlyMainContent": True}})
-    return result.get("markdown", "")
+    result = _firecrawl.scrape(url, formats=["markdown"])
+    return result.markdown
 
 _flash = OpenAIModel(
     api_key=os.environ["OPENAI_API_KEY"],
     parameters={
-        "model": "gemini-2.5-flash",
+        "model": "gemini-2.5-flash-lite",
         "temperature": 0.2,
-        "max_tokens": 1500,
+        "max_tokens": 8000,
     },
 )
 
 _pro = OpenAIModel(
     api_key=os.environ["OPENAI_API_KEY"],
     parameters={
-        "model": "gemini-2.5-flash",
+        "model": "gemini-2.5-flash-lite",
         "temperature": 0.3,
-        "max_tokens": 4000,
+        "max_tokens": 8000,
     },
 )
 
