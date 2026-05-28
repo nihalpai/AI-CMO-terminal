@@ -17,3 +17,6 @@ node_modules/
 
 # MacOS garbage files
 .DS_Store
+
+# Duplicate/accidental macOS copies
+frontend/tailwind.config 2.ts

@@ -1,7 +1,7 @@
 import asyncio
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Request, Response
@@ -19,6 +19,8 @@ load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+
+supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -39,6 +41,28 @@ class AnalyzeRequest(BaseModel):
     url: str
 
 
+def _normalize_url(url: str) -> str:
+    return url.rstrip("/")
+
+
+async def _find_cached_job(url: str) -> str | None:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+    def _query():
+        result = supabase_client.table("analysis_jobs") \
+            .select("id") \
+            .eq("url", url) \
+            .eq("status", "completed") \
+            .gte("created_at", cutoff.isoformat()) \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .execute()
+        return result.data
+
+    rows = await asyncio.to_thread(_query)
+    return rows[0]["id"] if rows else None
+
+
 async def analyze_url_background(job_id: str, url: str) -> None:
     try:
         result = await asyncio.to_thread(run_analysis, url)
@@ -48,16 +72,13 @@ async def analyze_url_background(job_id: str, url: str) -> None:
         status = "error"
 
     def _insert():
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        client.table("analysis_jobs").insert(
-            {
-                "id": job_id,
-                "status": status,
-                "url": url,
-                "result": result,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).execute()
+        supabase_client.table("analysis_jobs").insert({
+            "id": job_id,
+            "status": status,
+            "url": url,
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
 
     await asyncio.to_thread(_insert)
 
@@ -75,6 +96,12 @@ async def analyze(
     payload: AnalyzeRequest,
     background_tasks: BackgroundTasks,
 ) -> JSONResponse:
+    url = _normalize_url(payload.url)
+
+    cached_id = await _find_cached_job(url)
+    if cached_id:
+        return JSONResponse({"job_id": cached_id, "status": "completed"}, status_code=200)
+
     job_id = str(uuid.uuid4())
-    background_tasks.add_task(analyze_url_background, job_id, payload.url)
+    background_tasks.add_task(analyze_url_background, job_id, url)
     return JSONResponse({"job_id": job_id, "status": "processing"}, status_code=202)
