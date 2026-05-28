@@ -27,5 +27,10 @@ OpenAIModel(
 ## Tool Permissions
 Read-Only. Receives structured context from Researcher — no direct web access.
 
+## Runtime Variable Contract
+`target_url` (string) is injected at the top of every task instruction via
+`_ENTITY_BOUNDARY_TEMPLATE` in `ai_pipeline.py`. The strategist must treat the
+target URL as the entity being analyzed, not as a market competitor or gap.
+
 ## Phase
 Phase 2+ — not wired in the Day 1 MVP skeleton.

@@ -27,5 +27,10 @@ OpenAIModel(
 ## Tool Permissions
 All tool inputs must be hardcoded as **Read-Only**. No write or mutating operations.
 
+## Runtime Variable Contract
+`target_url` (string) — the URL submitted by the user — is injected at the top of every
+task instruction via `_ENTITY_BOUNDARY_TEMPLATE` in `ai_pipeline.py`. The agent must
+never include this URL or any brand derived from it in any output field.
+
 ## Phase
 Phase 2+ — not wired in the Day 1 MVP skeleton.
