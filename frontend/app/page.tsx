@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { AnalysisProgressLoader } from '@/components/analysis/AnalysisProgressLoader'
+import { ReportDashboard } from '@/components/report/ReportDashboard'
 
 type AppStatus = 'idle' | 'loading' | 'polling' | 'complete' | 'error'
 
@@ -12,24 +14,6 @@ type AnalysisReport = {
   recommended_channels: string[]
   content_recommendations: string[]
   hiring_signals: string[]
-}
-
-function ReportCard({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4">
-        {title}
-      </h2>
-      <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="flex gap-2 text-sm text-gray-300 leading-relaxed">
-            <span className="text-indigo-500 mt-0.5 shrink-0">·</span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
 }
 
 export default function Home() {
@@ -111,65 +95,29 @@ export default function Home() {
 
   if (appStatus === 'complete' && report) {
     return (
-      <main className="min-h-screen bg-gray-950 px-6 py-10">
-        <div className="max-w-5xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">GTM Intelligence Report</h1>
-              <p className="mt-1 text-sm text-gray-500 truncate max-w-lg">{analyzedUrl}</p>
-            </div>
-            <button
-              onClick={handleReset}
-              className="shrink-0 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 transition-colors"
-            >
-              New Analysis
-            </button>
-          </div>
-
-          {/* Executive Summary */}
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4">
-              Executive Summary
-            </h2>
-            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-              {report.summary}
-            </p>
-          </div>
-
-          {/* 2-col grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ReportCard title="Target Competitors" items={report.competitors} />
-            <ReportCard title="White Space Opportunities" items={report.white_space_opportunities} />
-            <ReportCard title="Recommended Channels" items={report.recommended_channels} />
-            <ReportCard title="Hiring Signals" items={report.hiring_signals} />
-          </div>
-
-          {/* Content Recommendations — full width */}
-          <ReportCard title="Content Recommendations" items={report.content_recommendations} />
-        </div>
-      </main>
+      <ReportDashboard
+        report={report}
+        analyzedUrl={analyzedUrl}
+        onReset={handleReset}
+      />
     )
   }
 
   const isBusy = appStatus === 'loading' || appStatus === 'polling'
 
-  const buttonLabel =
-    appStatus === 'loading'
-      ? 'Submitting...'
-      : appStatus === 'polling'
-        ? 'Analyzing...'
-        : 'Generate Report'
-
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-950">
-      <div className="w-full max-w-lg px-6 py-10 bg-gray-900 rounded-2xl shadow-xl">
-        <h1 className="text-2xl font-bold text-white mb-2">GTM Intelligence</h1>
-        <p className="text-sm text-gray-400 mb-8">
-          Enter a competitor URL to generate your analysis report.
-        </p>
+    <main className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-lg space-y-8 rounded-xl bg-card border border-border p-8 shadow-2xl shadow-black/40">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+            GTM Intelligence
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Enter a competitor URL to generate your analysis report.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="url"
             value={url}
@@ -177,52 +125,32 @@ export default function Home() {
             placeholder="https://competitor.com"
             disabled={isBusy}
             required
-            className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-slate-800/60 border border-border px-4 py-3 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 disabled:opacity-50 transition-colors"
           />
           <button
             type="submit"
             disabled={isBusy}
-            className="w-full py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 px-4 py-3 text-sm font-semibold text-slate-950 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {buttonLabel}
+            {appStatus === 'loading'
+              ? 'Submitting...'
+              : appStatus === 'polling'
+                ? 'Analyzing...'
+                : 'Generate Report'}
           </button>
         </form>
 
         {isBusy && (
-          <div className="mt-6 flex items-center gap-3 text-gray-400">
-            <svg
-              className="animate-spin h-5 w-5 text-indigo-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            <span className="text-sm">
-              {appStatus === 'loading'
-                ? 'Sending request to backend...'
-                : 'Waiting for analysis to complete...'}
-            </span>
+          <div className="border-t border-border pt-6">
+            <AnalysisProgressLoader />
           </div>
         )}
 
         {appStatus === 'error' && (
-          <div className="mt-6 p-4 rounded-lg bg-red-900/40 border border-red-700">
-            <p className="text-red-400 font-semibold">Something went wrong</p>
+          <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4">
+            <p className="text-sm font-semibold text-red-400">Something went wrong</p>
             {errorMessage && (
-              <p className="mt-1 text-sm text-red-300/70">{errorMessage}</p>
+              <p className="mt-1 text-xs text-red-400/70">{errorMessage}</p>
             )}
           </div>
         )}
