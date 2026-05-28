@@ -1,15 +1,15 @@
-# Current Sprint Plan: Live Competitor Discovery via Serper.dev
+# Current Sprint Plan: LinkedIn Mock Framework & Signal Extraction
 
 ## 1. Context & Objective
-The pipeline successfully isolates the target URL using runtime entity boundaries, but it suffers from Context Starvation. It relies on the LLM's internal weights to guess competitors. To make detection reliable, we must ground the pipeline in live search results.
+We need to extract LinkedIn hiring and content signals for our discovered competitors. To protect a strict $5 Apify budget, we are implementing a feature-flagged caching fixture. This allows the AI pipeline to develop complex downstream synthesis using static data for free.
 
 ## 2. Current Status
 - **Frontend:** Complete and polling successfully. (LOCKED)
-- **Database:** Supabase (`analysis_jobs`) is operational. Caching logic is verified. (LOCKED)
-- **AI Pipeline:** Modularized task generation inside `run_analysis(url)` is live. (UNLOCKED)
+- **Database:** Supabase caching is operational. (LOCKED)
+- **Competitor Discovery:** Serper integration is live and passing competitor URLs. (LOCKED)
 
-## 3. Immediate Sprint Tasks (Objective: Live Grounding)
-1. **Environment Setup:** Read `SERPER_API_KEY` from the backend environment variables.
-2. **Build Serper Client:** Implement a clean, async-compatible search helper function that queries Google via Serper for `"{target_company} top competitors alternatives market research"`.
-3. **Data Ingestion Loop:** Extract the top 5 organic search result titles, snippets, and URLs from the Serper response.
-4. **Context Injection:** Inject this raw text block directly into the `Researcher Agent`'s task input, transforming its role from a static page reader into a live data synthesis engine.
+## 3. Immediate Sprint Tasks (Objective: Cost-Isolated Extraction)
+1. **Environment Config:** Define `USE_MOCK_APIFY=true` and `APIFY_API_TOKEN` in `.env`.
+2. **Create Fixture Data:** Build a rich sample file (`backend/resources/mock_linkedin_signals.json`) containing realistic job openings (titles, descriptions hinting at strategic pivots) and recent social posts.
+3. **Build Toggled Client:** Create `backend/linkedin_scraper.py`. If `USE_MOCK_APIFY` is true, return the fixture. If false, run the live async `apify-client` SDK call (throttled to a maximum of 3 items).
+4. **Context Injection:** Format the output block into clean Markdown and bind it to the `Strategist Agent`'s input task.

@@ -1,0 +1,136 @@
+{
+  "competitors": [
+    {
+      "name": "Salesloft",
+      "linkedin_url": "https://www.linkedin.com/company/salesloft",
+      "job_posts": [
+        {
+          "title": "Enterprise Account Executive",
+          "location": "Atlanta, GA (Hybrid)",
+          "posted_date": "2026-05-20",
+          "description_snippet": "Drive net-new revenue within Fortune 500 accounts. You will own the full sales cycle from prospecting to close for enterprise deals averaging $250K+ ARR. 5+ years of complex SaaS sales required. Quota: $1.8M annually."
+        },
+        {
+          "title": "Senior Sales Development Representative – Enterprise",
+          "location": "New York, NY (Remote)",
+          "posted_date": "2026-05-18",
+          "description_snippet": "Generate and qualify pipeline for Enterprise AE team. Target CROs and VP Sales at companies with 1,000+ employees. Heavy outbound motion — Salesloft platform proficiency required. This is not a PLG or inbound role."
+        },
+        {
+          "title": "Director of Enterprise Customer Success",
+          "location": "San Francisco, CA (Hybrid)",
+          "posted_date": "2026-05-14",
+          "description_snippet": "Own retention and expansion for a portfolio of 30–40 enterprise accounts ($500K–$2M ARR each). Build executive-level relationships and drive multi-year renewals. Partner with AEs on upsell and cross-sell motions."
+        }
+      ],
+      "social_posts": [
+        {
+          "posted_date": "2026-05-22",
+          "text": "We're proud to be named a Leader in the 2026 Gartner Magic Quadrant for Revenue Intelligence Platforms for the third consecutive year. This recognition reflects our relentless focus on enterprise-grade reliability and the trust of over 5,000 enterprise revenue teams worldwide. The enterprise sales motion is evolving — and Salesloft is built for it. Read the full report (link in comments).",
+          "likes": 1243,
+          "comments": 87
+        },
+        {
+          "posted_date": "2026-05-15",
+          "text": "Just closed the largest deal in Salesloft history — a global manufacturing enterprise with 12,000 seats. This isn't just a win for our team; it's proof that the future of revenue belongs to those who can operate at enterprise scale. Congratulations to the entire team who worked this 14-month deal cycle. This is what we mean when we say 'built for enterprise.'",
+          "likes": 3421,
+          "comments": 204
+        },
+        {
+          "posted_date": "2026-05-08",
+          "text": "The era of the self-serve trial for enterprise software is over. Enterprises don't want a 14-day trial — they want a proof of concept, executive alignment, and a roadmap to value. Our new Enterprise Concierge Onboarding program cuts average time-to-value from 90 days to 28. Happy to share the playbook with any revenue leader facing this challenge.",
+          "likes": 876,
+          "comments": 61
+        }
+      ]
+    },
+    {
+      "name": "Outreach.io",
+      "linkedin_url": "https://www.linkedin.com/company/outreach-io",
+      "job_posts": [
+        {
+          "title": "Staff Machine Learning Engineer – AI Forecasting",
+          "location": "Seattle, WA (Hybrid)",
+          "posted_date": "2026-05-21",
+          "description_snippet": "Design and deploy ML models powering Outreach's AI-native forecasting and deal intelligence features. Work with petabyte-scale activity data. Python, PyTorch, and distributed systems experience required. No customer-facing component."
+        },
+        {
+          "title": "Principal Software Engineer – Platform Infrastructure",
+          "location": "Seattle, WA (Remote)",
+          "posted_date": "2026-05-19",
+          "description_snippet": "Architect core platform services underpinning the Outreach engagement layer. Focus areas: data pipeline reliability, multi-tenant SaaS scaling, and API performance. 8+ years required. Zero interaction with GTM teams."
+        },
+        {
+          "title": "Senior Data Engineer – Revenue Analytics",
+          "location": "Remote – US",
+          "posted_date": "2026-05-12",
+          "description_snippet": "Build and maintain the data infrastructure that powers Outreach's Revenue AI product suite. dbt, Snowflake, and Airflow proficiency required. This is a pure engineering role — no sales or marketing collaboration needed."
+        }
+      ],
+      "social_posts": [
+        {
+          "posted_date": "2026-05-23",
+          "text": "AI doesn't replace your sales team — it multiplies them. Our new Revenue AI layer predicts deal slippage 3 weeks before it happens, with 89% accuracy across our customer base. We're moving from a sales engagement platform to an AI-native revenue execution platform. The roadmap we're building has never been done before in this category. Technical deep-dive from our CTO below.",
+          "likes": 654,
+          "comments": 42
+        },
+        {
+          "posted_date": "2026-05-16",
+          "text": "Outreach is doubling down on product-led infrastructure so our customers can build AI-powered workflows without writing a single line of code. This quarter we shipped 14 new automation primitives. We believe the best GTM motion in the next 24 months will be orchestrated, not manual. More details in our Spring Product Release (link in bio).",
+          "likes": 489,
+          "comments": 33
+        },
+        {
+          "posted_date": "2026-05-09",
+          "text": "Some platforms try to do everything. We decided to go deep on one thing: making AI-assisted selling actually work at scale. That means fewer flashy features and more engineering investment in data quality, model accuracy, and platform reliability. Not every decision makes for a good press release — but every decision is for our customers.",
+          "likes": 712,
+          "comments": 55
+        }
+      ]
+    },
+    {
+      "name": "Apollo.io",
+      "linkedin_url": "https://www.linkedin.com/company/apolloio",
+      "job_posts": [
+        {
+          "title": "Head of Content Marketing",
+          "location": "Remote – Global",
+          "posted_date": "2026-05-22",
+          "description_snippet": "Lead Apollo's content engine — SEO, long-form editorial, video, and distribution. Own the full content funnel from awareness to activation. We publish 40+ pieces per month and are scaling to 80. Experience growing organic traffic from 0 to 1M+ sessions required. This role reports directly to the CMO."
+        },
+        {
+          "title": "Growth Marketing Manager – PLG",
+          "location": "Remote – US",
+          "posted_date": "2026-05-20",
+          "description_snippet": "Drive product-led growth experiments across onboarding, activation, and viral loops. Own A/B testing roadmap for free-to-paid conversion. Work closely with product and data. Apollo has 1M+ free users — your job is to turn them into revenue. Amplitude and SQL proficiency required."
+        },
+        {
+          "title": "Senior SEO Strategist",
+          "location": "Remote – US/EMEA",
+          "posted_date": "2026-05-17",
+          "description_snippet": "Scale Apollo's programmatic and editorial SEO from 800K to 3M monthly organic visits. Own keyword strategy, topical authority mapping, and link acquisition. We are building the largest free B2B sales intelligence content library on the internet. Prior experience scaling a B2B SaaS SEO program to 1M+ organic sessions required."
+        }
+      ],
+      "social_posts": [
+        {
+          "posted_date": "2026-05-24",
+          "text": "We just crossed 1.5 million registered users on Apollo — and 78% of them never spoke to a salesperson. That's not an accident. That's the product-led playbook working exactly as designed. Free forever means we get to earn your upgrade, not demand it. Thank you to our community for proving that the best sales tool is one that actually helps you sell. AMA in the comments.",
+          "likes": 5231,
+          "comments": 418
+        },
+        {
+          "posted_date": "2026-05-18",
+          "text": "We just released the 2026 State of Sales Intelligence Report — 2,400 sales professionals, 6 months of data, one clear finding: teams using AI-enriched contact data close deals 34% faster. We made the full report free. No email required. Because we believe great data should be accessible — and we want every sales team to win, regardless of budget. Link in first comment.",
+          "likes": 2876,
+          "comments": 192
+        },
+        {
+          "posted_date": "2026-05-11",
+          "text": "Apollo Community Update: 47,000 members and growing. This week's top threads: cold email teardowns, AI sequencing frameworks, and a 22-reply debate about whether SDRs are a dying role (spoiler: they're not — they're evolving). We're building the largest peer community for B2B revenue teams. It's free. It's unfiltered. And it's where the best GTM minds are sharing what's actually working right now.",
+          "likes": 1654,
+          "comments": 127
+        }
+      ]
+    }
+  ]
+}
