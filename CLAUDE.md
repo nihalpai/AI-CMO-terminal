@@ -10,7 +10,7 @@ This project uses a headless architecture: a Next.js frontend and a Python FastA
 - **Secrets:** Never log or expose `.env` values. API keys live in `backend/.env` only.
 
 ## 2. Tech Stack
-- **Frontend:** Next.js 15 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
+- **Frontend:** Next.js 16.2.6 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
 - **Backend:** Python FastAPI, Lyzr Automata, Gemini 2.5 Flash Lite (via OpenAI-compat endpoint)
 - **Database:** Supabase (PostgreSQL) — `analysis_jobs` table, `watchlist` table
 - **APIs:** Firecrawl (scraping), Serper.dev (search), Resend (email digest)
@@ -66,14 +66,52 @@ All fields required in every analysis result:
 - **Sprint 4:** Dashboard content fixes — company_description, geo_signals, real traffic tab, navCard documents, always-visible Draft button
 - **Sprint 5:** URL normalization (`https://` prepend), null safety, LinkedIn → ATS job board scraping
 
-## 9. Next Sprint Goal (Sprint 6)
-**Agent output quality — fine-tune for publication-ready content:**
-- Researcher: Extract specific pricing tiers, feature gaps, and positioning language verbatim from scraped content
-- Strategist: Named, attributed hiring insights with explicit strategic implications
-- Execution Agent: Content recommendations that are ready-to-draft (specific angles, not topic headings)
-- DraftPanel: Improve `/api/v1/chat` prompt so it returns a full, publish-ready post (not a template)
+## 9. Next Sprint Goal (Sprint 6) — Production Deployment
+Feature development is frozen. Sprint 6 is entirely deployment and security hardening. **No pipeline or UI changes until Sprint 6 is complete.**
 
-## 10. Workflow
+See `docs/PREFLIGHT_CHECKLIST.md` — all items there must be ticked before any code is written.
+
+### What breaks in production right now (confirmed against code):
+- CORS hardcoded to `localhost:3000` → `backend/main.py:33`
+- Backend URL hardcoded to `localhost:8000` → `frontend/app/page.tsx:87`, `AICMOChat.tsx:104`, `DraftPanel.tsx:46`
+- Resend sender hardcoded to `digest@yourdomain.com` → `backend/services/weekly_digest.py:88`
+- No rate limiting on `/api/v1/chat` or `/api/v1/watchlist/run` → DoW exposure
+- No user authentication → any caller can burn Gemini/Firecrawl/Serper quota
+- No Supabase RLS → anon key has full read access to all rows
+
+### Sprint 6 implementation order (after pre-flight checklist is done):
+1. **Backend hardening** — CORS from env var, extract `limiter` to `backend/limiter.py`, add rate limiting to chat/watchlist/digest, parameterize `RESEND_FROM_EMAIL`
+2. **Dockerfile** — `backend/Dockerfile`, Python 3.11-slim, non-root user, uvicorn with 2 workers
+3. **ECS Task Definition + Service** — SSM Parameter Store secrets injection, ALB health check, CloudWatch logs
+4. **Frontend API base URL** — replace all 3 `localhost:8000` hardcodes with `process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'`
+5. **Auth.js v5** — `frontend/lib/auth.ts` (EmailProvider + allowlist), `middleware.ts`, login page, API route
+6. **Netlify deploy + DNS** — trigger first build after env vars are set, point domains
+7. **Supabase RLS** — enable on `analysis_jobs` and `watchlist`, run policy SQL
+
+### Sprint 6 target architecture:
+```
+Browser → Netlify (app.yourdomain.com)
+            ↓ NEXT_PUBLIC_API_BASE_URL
+          Cloudflare WAF (optional)
+            ↓
+          AWS ALB (443, ACM cert)
+            ↓ port 8000 (ALB SG only)
+          ECS Fargate (Docker, non-root)
+            ↓ secrets from SSM Parameter Store
+          FastAPI + slowapi
+            ↓
+          Supabase (RLS enforced)
+```
+
+## 10. Sprint 7 (After Deployment) — Agent Output Quality
+Fine-tune all three pipeline agents for publication-ready content:
+- Researcher: Extract specific pricing tiers, feature gaps, and verbatim positioning language
+- Strategist: Named, attributed hiring insights with explicit strategic implications
+- Execution Agent: Content recommendations with specific angles, not topic headings
+- DraftPanel: Platform selector (X/LinkedIn/Reddit/Blog) + full publish-ready post output
+
+## 11. Workflow
 - **ALWAYS use Plan Mode first** for any feature touching the pipeline or layout.
 - **Context Compression:** Use `repomix` if context drift occurs.
 - **Testing:** Always test with `USE_MOCK_APIFY=true` first; use `false` only for targeted live validation.
+- **Next.js version:** This project runs Next.js 16.2.6 — APIs and conventions may differ from training data. Check `node_modules/next/dist/docs/` before writing any Next.js-specific code.

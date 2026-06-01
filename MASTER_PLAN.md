@@ -79,11 +79,86 @@ A terminal-style AI CMO SaaS that takes any company URL and returns a full compe
 
 ---
 
-## 🚧 Sprint 6 — Agent Output Quality (NEXT)
+## 🚧 Sprint 6 — Production Deployment (CURRENT)
 
-**Goal:** Fine-tune all three pipeline agents so their outputs are specific, named, actionable, and publication-ready. The infrastructure is solid — this sprint is entirely about prompt engineering and output quality.
+**Goal:** Take the app from local-only to production. Feature development is frozen until this sprint is complete.
 
-### 6a — Researcher Agent
+See `docs/PREFLIGHT_CHECKLIST.md` for all account/cloud setup steps that must be done before any code is written.
+
+### What breaks in production right now
+| Issue | Location | Severity |
+|---|---|---|
+| CORS hardcoded to `localhost:3000` | `backend/main.py:33` | Crash |
+| Backend URL hardcoded to `localhost:8000` | `page.tsx:87`, `AICMOChat.tsx:104`, `DraftPanel.tsx:46` | Crash |
+| Resend sender hardcoded | `weekly_digest.py:88` | Runtime failure |
+| No rate limiting on chat/watchlist/digest | `routers/agents.py`, `routers/watchlist.py` | DoW exposure |
+| No authentication | All endpoints | Critical |
+| No Supabase RLS | Supabase tables | Critical |
+
+### Implementation order (after pre-flight is done)
+
+**Phase 1 — Backend hardening**
+- `backend/main.py`: CORS from `CORS_ORIGINS` env var
+- New `backend/limiter.py`: extract shared `slowapi` limiter (avoids circular import)
+- `backend/routers/agents.py`: `@limiter.limit("10/minute")` on `/api/v1/chat`
+- `backend/routers/watchlist.py`: `@limiter.limit("10/minute")` on `/api/v1/watchlist/run`
+- `backend/main.py`: same on `/api/v1/digest/run`
+- `backend/services/weekly_digest.py`: `RESEND_FROM_EMAIL` env var (currently hardcoded to `digest@yourdomain.com`)
+
+**Phase 2 — Dockerfile**
+- New `backend/Dockerfile`: Python 3.11-slim, non-root user, `uvicorn main:app --workers 2`
+- New `backend/.dockerignore`
+
+**Phase 3 — ECS Task Definition + Service**
+- Task definition references ECR image, injects all secrets from SSM Parameter Store
+- CPU: 512, Memory: 1024, health check: `/health`
+- CloudWatch log group: `/ecs/aicmo-backend`
+
+**Phase 4 — Frontend API base URL**
+- Replace all 3 `http://localhost:8000` hardcodes with `process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'`
+- Files: `frontend/app/page.tsx:87`, `frontend/components/dashboard/AICMOChat.tsx:104`, `frontend/components/dashboard/DraftPanel.tsx:46`
+
+**Phase 5 — Auth.js v5**
+- New `frontend/lib/auth.ts`: EmailProvider + `ALLOWED_EMAILS` allowlist in `signIn` callback
+- New `frontend/app/api/auth/[...nextauth]/route.ts`
+- New `frontend/middleware.ts`: protect all routes, redirect to `/login`
+- New `frontend/app/login/page.tsx`
+
+**Phase 6 — Netlify deploy + DNS**
+- Trigger first Netlify build after all env vars are set
+- Point `app.yourdomain.com` → Netlify, `api.yourdomain.com` → ALB
+
+**Phase 7 — Supabase RLS**
+```sql
+ALTER TABLE analysis_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "read_by_job_id" ON analysis_jobs FOR SELECT USING (true);
+
+ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_rows" ON watchlist USING (user_email = auth.jwt() ->> 'email');
+```
+
+### Target architecture
+```
+Browser → Netlify (app.yourdomain.com)
+            ↓ NEXT_PUBLIC_API_BASE_URL
+          Cloudflare WAF (optional)
+            ↓
+          AWS ALB (443, ACM cert)
+            ↓ port 8000 (ALB SG only)
+          ECS Fargate (Docker, non-root)
+            ↓ secrets from SSM Parameter Store
+          FastAPI + slowapi
+            ↓
+          Supabase (RLS enforced)
+```
+
+---
+
+## Sprint 7 — Agent Output Quality (After Deployment)
+
+**Goal:** Fine-tune all three pipeline agents so outputs are specific, named, actionable, and publication-ready.
+
+### 7a — Researcher Agent
 Current issue: Extracts generic summaries. Target: specific pricing tiers (exact numbers), verbatim positioning language from the scraped page, named feature gaps.
 
 Changes:
@@ -91,31 +166,26 @@ Changes:
 - Add explicit instruction to quote competitor positioning verbatim
 - Require at least 3 specific SEO keywords found on the page (not inferred)
 
-### 6b — Strategist Agent
-Current issue: Hiring insights sometimes generic ("competitors are scaling engineering"). Target: always named + attributed with explicit strategic implication.
+### 7b — Strategist Agent
+Current issue: Hiring insights sometimes generic. Target: always named + attributed with explicit strategic implication.
 
 Changes:
-- Strengthen `HIRING SIGNAL RULE` in `_strategist` persona — add penalty clause for generic output
-- Add example of BAD output vs GOOD output in persona string
+- Strengthen `HIRING SIGNAL RULE` in `_strategist` persona — add BAD vs GOOD output example
 - Require `recommended_channels` to include specific tactics, not just channel names
 
-### 6c — Execution Agent
-Current issue: `content_recommendations` are topic headings ("Write a comparison article"). Target: specific, angled content hooks ready to hand to a writer.
+### 7c — Execution Agent
+Current issue: `content_recommendations` are topic headings. Target: specific, angled content hooks.
 
 Changes:
-- Update `_execution` persona: each `content_recommendations` item must follow format: `"[Format]: [Specific angle] — [Why it wins against [Competitor]]"`
+- Each item must follow: `"[Format]: [Specific angle] — [Why it wins against [Competitor]]"`
 - Example: `"Long-form article: 'Supabase vs Firebase: Real pricing at 10M rows' — targets Firebase's opaque pricing, captures bottom-of-funnel switchers"`
-- `hiring_signals` already has strict format; add same discipline to `content_recommendations`
 
-### 6d — DraftPanel Quality
-Current issue: `/api/v1/chat` prompt produces template-style output. Target: full publish-ready post.
+### 7d — DraftPanel Quality
+- Add platform selector (X, LinkedIn, Reddit, Blog) to DraftPanel UI
+- Update `/api/v1/chat` prompt to include platform context, tone, length target, CTA requirement
 
-Changes:
-- Update `backend/routers/agents.py` (or wherever the chat prompt is built) to include: platform context, tone, length target, call-to-action requirement
-- DraftPanel UI: add platform selector (Twitter/X, LinkedIn, Reddit, Blog) that adjusts the prompt
-
-### 6e — ATS Scraping Enrichment (optional)
-If ATS pages return sparse data (job title only), fall back to scraping the company's main `/careers` or `/jobs` page via Firecrawl as a secondary source.
+### 7e — ATS Scraping Enrichment (optional)
+Fall back to scraping `/careers` or `/jobs` page via Firecrawl if ATS pages return sparse data.
 
 ---
 
@@ -123,10 +193,10 @@ If ATS pages return sparse data (job title only), fall back to scraping the comp
 
 | Sprint | Goal |
 |--------|------|
-| Sprint 7 | Real-time competitor monitoring — daily Serper diff on watchlist items, push alert if new hiring signal detected |
-| Sprint 8 | Multi-URL analysis — analyze 2-3 competitor URLs simultaneously, side-by-side comparison view |
-| Sprint 9 | GA4 OAuth integration — replace AI-estimated traffic mix with real GA4 data |
-| Sprint 10 | Export — PDF report generation, Notion export, Slack digest |
+| Sprint 8 | Real-time competitor monitoring — daily Serper diff on watchlist items, push alert if new hiring signal detected |
+| Sprint 9 | Multi-URL analysis — analyze 2-3 competitor URLs simultaneously, side-by-side comparison view |
+| Sprint 10 | GA4 OAuth integration — replace AI-estimated traffic mix with real GA4 data |
+| Sprint 11 | Export — PDF report generation, Notion export, Slack digest |
 
 ---
 
