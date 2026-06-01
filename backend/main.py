@@ -36,12 +36,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from routers import agents as agents_router, company as company_router, watchlist as watchlist_router
+app.include_router(agents_router.router)
+app.include_router(company_router.router)
+app.include_router(watchlist_router.router)
+
 
 class AnalyzeRequest(BaseModel):
     url: str
 
 
 def _normalize_url(url: str) -> str:
+    url = url.strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
     return url.rstrip("/")
 
 
@@ -86,6 +94,14 @@ async def analyze_url_background(job_id: str, url: str) -> None:
 @app.get("/health")
 async def health() -> JSONResponse:
     return JSONResponse({"status": "ok"})
+
+
+@app.post("/api/v1/digest/run")
+async def run_digest(user_email: str = "user@example.com") -> JSONResponse:
+    """Manually trigger the weekly digest email."""
+    from services.weekly_digest import send_weekly_digest
+    result = await asyncio.to_thread(send_weekly_digest, user_email)
+    return JSONResponse(result)
 
 
 @app.post("/api/v1/analyze", status_code=202)

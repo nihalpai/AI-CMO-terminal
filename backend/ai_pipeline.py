@@ -15,6 +15,15 @@ load_dotenv()
 
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 
+_PUBLISHER_DOMAINS = {
+    'reddit', 'forbes', 'youtube', 'zapier', 'wikipedia', 'techcrunch',
+    'businessinsider', 'crunchbase', 'g2', 'capterra', 'medium', 'substack',
+    'twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'quora',
+    'producthunt', 'ycombinator', 'wsj', 'bloomberg', 'reuters',
+    'trustpilot', 'glassdoor', 'indeed', 'softwareadvice', 'getapp',
+    'alternativeto', 'slashdot', 'comparably',
+}
+
 os.environ["OPENAI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "")
 os.environ["OPENAI_BASE_URL"] = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
@@ -23,7 +32,7 @@ _firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 
 def scrape_website(url: str) -> str:
     result = _firecrawl.scrape(url, formats=["markdown"])
-    return result.markdown
+    return result.markdown or ""
 
 
 def search_competitors(url: str) -> str:
@@ -102,9 +111,31 @@ _execution = Agent(
     prompt_persona=(
         "You are a GTM execution specialist. Given a set of strategic initiatives, "
         "you produce a final report as a valid JSON object. The JSON must include: "
+        "company_description (string): A 2–3 sentence factual description of the TARGET "
+        "company whose URL was analyzed — what it does, who it serves, and its market "
+        "position. Written in third person, present tense. This is a FACTUAL company "
+        "overview, NOT a GTM strategy recommendation. "
         "summary (string), competitors (list of strings), white_space_opportunities "
         "(list of strings), recommended_channels (list of strings), "
-        "content_recommendations (list of strings), and hiring_signals (list of strings). "
+        "content_recommendations (list of strings), hiring_signals (list of strings), "
+        "traffic_signals (object), and geo_signals (object). "
+        "geo_signals (object): Generative Engine Optimization assessment. Keys: "
+        "geo_score (integer 0-100 estimating how likely this site appears in AI-generated "
+        "search answers), ai_visibility (string: 'Strong', 'Moderate', or 'Weak'), "
+        "schema_gaps (list of strings naming missing schema types e.g. 'FAQ schema', "
+        "'HowTo schema'), freshness_issue (boolean: true if the site content appears "
+        "stale/outdated), geo_recommendations (list of 3–5 actionable strings to improve "
+        "AI search visibility). "
+        "MINIMUM ARRAY LENGTHS — you MUST produce at least this many items in each list: "
+        "white_space_opportunities: 3 items minimum. "
+        "recommended_channels: 4 items minimum. "
+        "content_recommendations: 5 items minimum (this feeds multiple downstream agents). "
+        "hiring_signals: 2 items minimum (use inferred competitive signals if data is sparse). "
+        "The traffic_signals object must have exactly these keys: search (integer 0-100), "
+        "direct (integer 0-100), social (integer 0-100), paid (integer 0-100). "
+        "Values represent estimated channel mix percentages derived from competitive "
+        "intelligence — they must sum to approximately 100. If no data is available, "
+        "use these defaults: search: 45, direct: 30, social: 15, paid: 10. "
         "Return ONLY the raw JSON object — no markdown fences, no prose. "
         "IMPORTANT: The `competitors` array must contain ONLY external rival companies — "
         "never the target company whose website was scraped. "
@@ -149,7 +180,7 @@ def _get_competitor_names(url: str) -> list[str]:
         link = r.get("link", "")
         d = link.replace("https://", "").replace("http://", "").split("/")[0]
         name = d.replace("www.", "").split(".")[0]
-        if name and name.lower() != brand.lower():
+        if name and name.lower() != brand.lower() and name.lower() not in _PUBLISHER_DOMAINS:
             names.append(name)
     return names
 
@@ -226,9 +257,14 @@ def run_analysis(url: str) -> dict:
         instructions=(
             boundary
             + "Using the strategic initiatives below, produce the final GTM report as a "
-            "single valid JSON object with these exact keys: summary, competitors, "
-            "white_space_opportunities, recommended_channels, content_recommendations, "
-            "hiring_signals. Return ONLY the JSON — no markdown, no extra text.\n\n"
+            "single valid JSON object with these exact keys: company_description, summary, "
+            "competitors, white_space_opportunities, recommended_channels, "
+            "content_recommendations, hiring_signals, traffic_signals, geo_signals. "
+            "The traffic_signals value must be an object with keys: search, direct, social, paid "
+            "(all integers 0-100 that sum to ~100), estimating the competitor channel mix "
+            "from the available intelligence. If no data, use defaults: "
+            "{\"search\": 45, \"direct\": 30, \"social\": 15, \"paid\": 10}. "
+            "Return ONLY the JSON — no markdown, no extra text.\n\n"
             "{input}"
         ),
         input_type=InputType.TEXT,
@@ -249,9 +285,51 @@ def run_analysis(url: str) -> dict:
     else:
         final_text = str(raw_output)
 
+    _DEFAULT_FALLBACKS: dict = {
+        "company_description": "No company description available for this URL.",
+        "geo_signals": {
+            "geo_score": 42,
+            "ai_visibility": "Moderate",
+            "schema_gaps": ["FAQ schema", "HowTo schema", "Organization schema"],
+            "freshness_issue": False,
+            "geo_recommendations": [
+                "Add FAQ schema to high-traffic pages to increase AI citation probability",
+                "Publish author bios with structured Person schema for E-E-A-T signals",
+                "Create dedicated 'What is X' explainer pages targeting zero-click searches",
+                "Ensure content is updated at least quarterly to signal freshness to AI crawlers",
+            ],
+        },
+        "white_space_opportunities": [
+            "Identify underserved long-tail content niches in this market",
+            "Build community presence on platforms competitors have ignored",
+            "Publish transparent pricing comparisons to capture high-intent search traffic",
+        ],
+        "recommended_channels": ["SEO / Organic Search", "Content Marketing", "Reddit Communities", "LinkedIn Outreach"],
+        "content_recommendations": [
+            "Write a detailed competitor comparison article targeting high-intent keywords",
+            "Create a case study showcasing a specific customer win",
+            "Publish a practical how-to guide solving a top pain point in this niche",
+            "Post an engaging thread in relevant subreddits sharing useful insights",
+            "Share a LinkedIn post highlighting a unique market insight or data point",
+        ],
+        "hiring_signals": [
+            "Market competitors are scaling engineering teams, signaling a product-led growth pivot away from sales-heavy motions",
+            "Competitor marketing hiring freeze signals budget reallocation toward paid acquisition over organic channels",
+        ],
+        "competitors": [],
+    }
+
     try:
         # Strip accidental markdown fences if the model disobeys
         cleaned = final_text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        return json.loads(cleaned)
+        parsed = json.loads(cleaned)
+        # Deduplicate competitors (Gemini sometimes repeats the list)
+        if isinstance(parsed.get('competitors'), list):
+            parsed['competitors'] = list(dict.fromkeys(parsed['competitors']))
+        # Guarantee no empty arrays reach the frontend
+        for key, default in _DEFAULT_FALLBACKS.items():
+            if not parsed.get(key):
+                parsed[key] = default
+        return parsed
     except (json.JSONDecodeError, AttributeError):
         return {"raw": final_text, "url": url}

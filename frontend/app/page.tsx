@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { AnalysisProgressLoader } from '@/components/analysis/AnalysisProgressLoader'
-import { ReportDashboard } from '@/components/report/ReportDashboard'
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 
 type AppStatus = 'idle' | 'loading' | 'polling' | 'complete' | 'error'
 
@@ -14,6 +14,21 @@ type AnalysisReport = {
   recommended_channels: string[]
   content_recommendations: string[]
   hiring_signals: string[]
+  traffic_signals?: {
+    search: number
+    direct: number
+    social: number
+    paid: number
+  }
+}
+
+function extractDomain(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.replace(/^www\./, '')
+  } catch {
+    return url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+  }
 }
 
 export default function Home() {
@@ -22,6 +37,7 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState('')
   const [report, setReport] = useState<AnalysisReport | null>(null)
   const [analyzedUrl, setAnalyzedUrl] = useState('')
+  const [jobId, setJobId] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -30,13 +46,13 @@ export default function Home() {
     }
   }, [])
 
-  function startPolling(jobId: string) {
+  function startPolling(id: string) {
     intervalRef.current = setInterval(async () => {
       try {
         const { data, error } = await supabase
           .from('analysis_jobs')
           .select('status, result')
-          .eq('id', jobId)
+          .eq('id', id)
           .single()
 
         if (error) return
@@ -65,6 +81,7 @@ export default function Home() {
     setAppStatus('loading')
     setErrorMessage('')
     setReport(null)
+    setJobId('')
 
     try {
       const res = await fetch('http://localhost:8000/api/v1/analyze', {
@@ -75,10 +92,28 @@ export default function Home() {
 
       if (!res.ok) throw new Error(`Backend returned ${res.status}`)
 
-      const { job_id } = await res.json()
+      const data = await res.json()
+      const id: string = data.job_id
+
+      setJobId(id)
       setAnalyzedUrl(url.trim())
+
+      // Cached result — backend returned completed immediately
+      if (data.status === 'completed') {
+        const { data: row } = await supabase
+          .from('analysis_jobs')
+          .select('result')
+          .eq('id', id)
+          .single()
+        if (row?.result) {
+          setReport(row.result as AnalysisReport)
+          setAppStatus('complete')
+          return
+        }
+      }
+
       setAppStatus('polling')
-      startPolling(job_id)
+      startPolling(id)
     } catch (err) {
       setAppStatus('error')
       setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
@@ -90,19 +125,23 @@ export default function Home() {
     setReport(null)
     setUrl('')
     setAnalyzedUrl('')
+    setJobId('')
     setErrorMessage('')
   }
 
+  // ── Full dashboard once analysis is complete ──────────────────────────────
   if (appStatus === 'complete' && report) {
     return (
-      <ReportDashboard
+      <DashboardLayout
         report={report}
-        analyzedUrl={analyzedUrl}
+        jobId={jobId}
+        companyDomain={extractDomain(analyzedUrl)}
         onReset={handleReset}
       />
     )
   }
 
+  // ── Entry screen (idle / loading / polling / error) ───────────────────────
   const isBusy = appStatus === 'loading' || appStatus === 'polling'
 
   return (
@@ -110,10 +149,10 @@ export default function Home() {
       <div className="w-full max-w-lg space-y-8 rounded-xl bg-card border border-border p-8 shadow-2xl shadow-black/40">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-50">
-            GTM Intelligence
+            AI CMO Terminal
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Enter a competitor URL to generate your analysis report.
+            Enter your competitor&apos;s URL to generate your GTM dashboard.
           </p>
         </div>
 
@@ -136,7 +175,7 @@ export default function Home() {
               ? 'Submitting...'
               : appStatus === 'polling'
                 ? 'Analyzing...'
-                : 'Generate Report'}
+                : 'Launch Dashboard'}
           </button>
         </form>
 
@@ -152,6 +191,12 @@ export default function Home() {
             {errorMessage && (
               <p className="mt-1 text-xs text-red-400/70">{errorMessage}</p>
             )}
+            <button
+              onClick={handleReset}
+              className="mt-3 text-xs text-slate-400 hover:text-slate-200 underline"
+            >
+              Try again
+            </button>
           </div>
         )}
       </div>

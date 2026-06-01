@@ -1,17 +1,79 @@
-# Global Project Constitution: AI Marketing Agent (Apify Mocking Sprint)
+# Global Project Constitution: AI CMO Terminal
 
 This project uses a headless architecture: a Next.js frontend and a Python FastAPI backend.
 
-## 1. Core Directives & Anti-Assumptions
-- **Frontend is Locked:** Do NOT modify or read the Next.js frontend.
-- **FastAPI Routing is Locked:** Do NOT modify `main.py`.
-- **Strict Sprint Scope:** We are building the Apify LinkedIn signal extraction layer using a strict Mock/Live toggle framework to protect API credits. 
+## 1. Core Directives (Never Override)
+- **FastAPI Routing Lock:** Do NOT modify `main.py` routing logic. You may add `app.include_router(...)` calls only.
+- **Design System Lock:** Keep the existing emerald/slate color palette and Plus Jakarta Sans font. Do not change `globals.css` color tokens.
+- **Budget Protection Rule:** `USE_MOCK_APIFY` must remain `true` in `.env` during all development. Never trigger live Apify runs.
+- **Component Reuse:** Always use existing `@/components/ui/*` primitives (Card, Button, Badge, ScrollArea, Separator, Skeleton) before writing new ones.
+- **Secrets:** Never log or expose `.env` values. API keys live in `backend/.env` only.
 
-## 2. Tech Stack & Engineering Constraints
-- **Backend Framework:** Python FastAPI.
-- **AI Orchestration:** `lyzr-automata` using `gemini-2.5-flash-lite`.
-- **Budget Protection Rule:** You are STRICTLY FORBIDDEN from executing live Apify actor runs during development. You must implement and default to a local JSON fixture file.
-- **Toggle Mechanism:** Read `USE_MOCK_APIFY` from the `.env` file. If `true`, bypass the API entirely.
+## 2. Tech Stack
+- **Frontend:** Next.js 15 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
+- **Backend:** Python FastAPI, Lyzr Automata, Gemini 2.5 Flash Lite (via OpenAI-compat endpoint)
+- **Database:** Supabase (PostgreSQL) — `analysis_jobs` table, `watchlist` table
+- **APIs:** Firecrawl (scraping), Serper.dev (search), Resend (email digest)
 
-## 3. The Native Workflow
-- **ALWAYS use Plan Mode first:** Enter Plan Mode, sketch the structure of the mock JSON payload, design the conditional routing logic in your client wrapper, and wait for approval.
+## 3. Architecture Overview
+```
+User → Next.js (port 3000)
+         ↓ POST /api/v1/analyze
+FastAPI (port 8000) → background task
+         ↓
+ai_pipeline.py: Researcher Agent → Strategist Agent → Execution Agent (Gemini 2.5 Flash Lite)
+         ↓
+Supabase: analysis_jobs (result jsonb, 7-day cache)
+         ↓
+Frontend polls /api/v1/analyze/{job_id} every 2s → renders 4-tab dashboard
+```
+
+## 4. Dashboard Tabs (All Complete)
+| Tab | Component | Key Data |
+|-----|-----------|----------|
+| Company | `CompanyPanel.tsx` | `company_description`, competitors, navCards |
+| Analytics | `AnalyticsCenter.tsx` | traffic_signals, white_space_opportunities, geo_signals |
+| Agents | `AgentsFeed.tsx` + `AgentCard.tsx` | 7 agent cards, DraftPanel |
+| Reports | `ReportsTab.tsx` | Full GTM report, hiring signals |
+
+Fixed AI CMO Chat sidebar: `AICMOChat.tsx` (always visible, 340px)
+
+## 5. Agent Pipeline Keys (Execution Agent JSON output)
+All fields required in every analysis result:
+- `company_description` — factual 2-3 sentence company overview
+- `summary` — GTM strategy framing
+- `competitors` — deduplicated list, no publisher domains
+- `white_space_opportunities` — min 3 items
+- `recommended_channels` — min 4 items
+- `content_recommendations` — min 5 items (feeds agent cards)
+- `hiring_signals` — min 2 items, format: `"[Competitor]: [Signal] signals [Implication]"`
+- `traffic_signals` — `{search, direct, social, paid}` integers summing to ~100
+- `geo_signals` — `{geo_score, ai_visibility, schema_gaps, freshness_issue, geo_recommendations}`
+
+## 6. Hiring Signals Source
+`backend/linkedin_scraper.py` — ATS job board strategy (NOT LinkedIn):
+- `USE_MOCK_APIFY=true` → dynamic mock keyed to actual competitor names
+- `USE_MOCK_APIFY=false` → Serper finds Greenhouse/Lever/Ashby URLs → Firecrawl scrapes → Serper news fallback
+- LinkedIn is permanently blocked by Firecrawl — never attempt to scrape it
+
+## 7. Competitor Extraction Rules
+`_PUBLISHER_DOMAINS` blocklist in `ai_pipeline.py` filters out media/aggregator sites (Reddit, Forbes, YouTube, etc.) from being returned as competitors. Competitors are deduplicated with `list(dict.fromkeys(...))` after JSON parse.
+
+## 8. Completed Sprints
+- **Sprint 1:** Core pipeline (Researcher → Strategist → Execution), Supabase caching, FastAPI async background tasks
+- **Sprint 2:** Tabbed layout, theme toggle (light/dark), DraftPanel, watchlist CRUD, weekly email digest
+- **Sprint 3:** Apify removed, dynamic mock data, Serper-based hiring signals
+- **Sprint 4:** Dashboard content fixes — company_description, geo_signals, real traffic tab, navCard documents, always-visible Draft button
+- **Sprint 5:** URL normalization (`https://` prepend), null safety, LinkedIn → ATS job board scraping
+
+## 9. Next Sprint Goal (Sprint 6)
+**Agent output quality — fine-tune for publication-ready content:**
+- Researcher: Extract specific pricing tiers, feature gaps, and positioning language verbatim from scraped content
+- Strategist: Named, attributed hiring insights with explicit strategic implications
+- Execution Agent: Content recommendations that are ready-to-draft (specific angles, not topic headings)
+- DraftPanel: Improve `/api/v1/chat` prompt so it returns a full, publish-ready post (not a template)
+
+## 10. Workflow
+- **ALWAYS use Plan Mode first** for any feature touching the pipeline or layout.
+- **Context Compression:** Use `repomix` if context drift occurs.
+- **Testing:** Always test with `USE_MOCK_APIFY=true` first; use `false` only for targeted live validation.

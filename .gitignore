@@ -6,17 +6,60 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pycache
 
-# Environment Variables (Secrets)
+# Environment Variables (Secrets) — NEVER commit these
 .env
 .env.local
+.env.*.local
+backend/.env
 
 # Next.js / Frontend
 node_modules/
 .next/
+.turbo/
+out/
 
 # MacOS garbage files
 .DS_Store
+**/.DS_Store
 
 # Duplicate/accidental macOS copies
 frontend/tailwind.config 2.ts
+
+# Log files
+*.log
+backend/*.log
+don-drapor-backend.log
+/tmp/don-drapor-*.log
+
+# Claude session files (private conversation history, memory, plans)
+.claude/
+
+# Repomix context dumps
+repomix-output*
+repomix.config.json
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursor/
+
+# Python build artifacts
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/

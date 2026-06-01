@@ -47,3 +47,75 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Light mode overrides — applied when <html class="light"> */
+html.light {
+  --background: 0 0% 97%;
+  --foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --primary: 142.1 76.2% 36.3%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 72.2% 50.6%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 142.1 76.2% 36.3%;
+}
+
+/* ── Light mode: remap hardcoded Tailwind slate classes ─────────────────────
+   html.light .bg-slate-* has specificity (0,0,1,1) vs plain .bg-slate-* (0,0,1,0)
+   so these win without !important.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Backgrounds */
+html.light .bg-slate-950 { background-color: #f8fafc; }
+html.light .bg-slate-900 { background-color: #ffffff; }
+html.light .bg-slate-800 { background-color: #f1f5f9; }
+html.light .bg-slate-700 { background-color: #e2e8f0; }
+
+/* Opacity/alpha variants — Tailwind escapes the slash in the class name */
+html.light .bg-slate-800\/50 { background-color: rgba(226, 232, 240, 0.5); }
+html.light .bg-slate-800\/40 { background-color: rgba(226, 232, 240, 0.4); }
+html.light .bg-slate-800\/60 { background-color: rgba(226, 232, 240, 0.6); }
+html.light .bg-slate-700\/20 { background-color: rgba(203, 213, 225, 0.2); }
+html.light .bg-slate-600\/20 { background-color: rgba(148, 163, 184, 0.2); }
+html.light .bg-slate-600\/30 { background-color: rgba(148, 163, 184, 0.3); }
+
+/* Text */
+html.light .text-slate-100 { color: #0f172a; }
+html.light .text-slate-200 { color: #1e293b; }
+html.light .text-slate-300 { color: #334155; }
+html.light .text-slate-400 { color: #475569; }
+html.light .text-slate-500 { color: #64748b; }
+html.light .text-slate-600 { color: #94a3b8; }
+
+/* Borders */
+html.light .border-slate-800 { border-color: #e2e8f0; }
+html.light .border-slate-700 { border-color: #cbd5e1; }
+html.light .border-slate-600 { border-color: #94a3b8; }
+
+/* Divide lines */
+html.light .divide-slate-800 > * + * { border-color: #e2e8f0; }
+
+/* Hover states */
+html.light .hover\:bg-slate-800:hover { background-color: #e2e8f0; }
+html.light .hover\:bg-slate-700:hover { background-color: #cbd5e1; }
+html.light .hover\:bg-slate-800\/50:hover { background-color: rgba(226, 232, 240, 0.5); }
+
+/* Ring / focus */
+html.light .ring-slate-800 { --tw-ring-color: #e2e8f0; }
+
+/* Sticky headers that use bg-slate-900 — ensure they stay opaque in light mode */
+html.light .sticky { background-color: #ffffff; }
+
+/* Emerald / green accent colours are intentionally NOT overridden —
+   they look great on both light and dark backgrounds.              */
