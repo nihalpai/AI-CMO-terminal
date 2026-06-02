@@ -5,30 +5,36 @@ This project uses a headless architecture: a Next.js frontend and a Python FastA
 ## 1. Core Directives (Never Override)
 - **FastAPI Routing Lock:** Do NOT modify `main.py` routing logic. You may add `app.include_router(...)` calls only.
 - **Design System Lock:** Keep the existing emerald/slate color palette and Plus Jakarta Sans font. Do not change `globals.css` color tokens.
-- **Budget Protection Rule:** `USE_MOCK_APIFY` must remain `true` in `.env` during all development. Never trigger live Apify runs.
+- **Mock Hiring Data:** `USE_MOCK_APIFY` must remain `true` in `.env` during all development. Set to `false` only for targeted live ATS scraping tests.
 - **Component Reuse:** Always use existing `@/components/ui/*` primitives (Card, Button, Badge, ScrollArea, Separator, Skeleton) before writing new ones.
-- **Secrets:** Never log or expose `.env` values. API keys live in `backend/.env` only.
+- **Secrets:** Never log or expose env values. Backend secrets live in Render environment variables. Frontend secrets live in Vercel environment variables.
 
 ## 2. Tech Stack
 - **Frontend:** Next.js 16.2.6 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
 - **Backend:** Python FastAPI, Lyzr Automata, Gemini 2.5 Flash Lite (via OpenAI-compat endpoint)
 - **Database:** Supabase (PostgreSQL) — `analysis_jobs` table, `watchlist` table
-- **APIs:** Firecrawl (scraping), Serper.dev (search), Resend (email digest)
+- **APIs:** Firecrawl (scraping), Serper.dev (search)
 
-## 3. Architecture Overview
+## 3. Production URLs
+- **Frontend:** https://don-drapor.vercel.app (Vercel)
+- **Backend:** https://don-drapor.onrender.com (Render, free tier — ~30s cold start after inactivity)
+- **Health check:** https://don-drapor.onrender.com/health
+
+## 4. Architecture Overview
 ```
-User → Next.js (port 3000)
-         ↓ POST /api/v1/analyze
-FastAPI (port 8000) → background task
-         ↓
-ai_pipeline.py: Researcher Agent → Strategist Agent → Execution Agent (Gemini 2.5 Flash Lite)
-         ↓
-Supabase: analysis_jobs (result jsonb, 7-day cache)
-         ↓
-Frontend polls /api/v1/analyze/{job_id} every 2s → renders 4-tab dashboard
+Browser → Vercel (don-drapor.vercel.app)
+            ↓ NEXT_PUBLIC_API_BASE_URL
+          Render (don-drapor.onrender.com)
+            ↓ env vars in Render dashboard
+          FastAPI + slowapi rate limiting
+            ↓
+          Supabase (analysis_jobs, watchlist)
+          Gemini / Firecrawl / Serper
 ```
 
-## 4. Dashboard Tabs (All Complete)
+**Local dev:** Frontend on port 3000, backend on port 8000. `NEXT_PUBLIC_API_BASE_URL` defaults to `http://localhost:8000` if not set.
+
+## 5. Dashboard Tabs (All Complete)
 | Tab | Component | Key Data |
 |-----|-----------|----------|
 | Company | `CompanyPanel.tsx` | `company_description`, competitors, navCards |
@@ -38,7 +44,7 @@ Frontend polls /api/v1/analyze/{job_id} every 2s → renders 4-tab dashboard
 
 Fixed AI CMO Chat sidebar: `AICMOChat.tsx` (always visible, 340px)
 
-## 5. Agent Pipeline Keys (Execution Agent JSON output)
+## 6. Agent Pipeline Keys (Execution Agent JSON output)
 All fields required in every analysis result:
 - `company_description` — factual 2-3 sentence company overview
 - `summary` — GTM strategy framing
@@ -50,68 +56,39 @@ All fields required in every analysis result:
 - `traffic_signals` — `{search, direct, social, paid}` integers summing to ~100
 - `geo_signals` — `{geo_score, ai_visibility, schema_gaps, freshness_issue, geo_recommendations}`
 
-## 6. Hiring Signals Source
+## 7. Hiring Signals Source
 `backend/linkedin_scraper.py` — ATS job board strategy (NOT LinkedIn):
 - `USE_MOCK_APIFY=true` → dynamic mock keyed to actual competitor names
 - `USE_MOCK_APIFY=false` → Serper finds Greenhouse/Lever/Ashby URLs → Firecrawl scrapes → Serper news fallback
 - LinkedIn is permanently blocked by Firecrawl — never attempt to scrape it
 
-## 7. Competitor Extraction Rules
+## 8. Competitor Extraction Rules
 `_PUBLISHER_DOMAINS` blocklist in `ai_pipeline.py` filters out media/aggregator sites (Reddit, Forbes, YouTube, etc.) from being returned as competitors. Competitors are deduplicated with `list(dict.fromkeys(...))` after JSON parse.
 
-## 8. Completed Sprints
+## 9. Completed Sprints
 - **Sprint 1:** Core pipeline (Researcher → Strategist → Execution), Supabase caching, FastAPI async background tasks
-- **Sprint 2:** Tabbed layout, theme toggle (light/dark), DraftPanel, watchlist CRUD, weekly email digest
+- **Sprint 2:** Tabbed layout, theme toggle (light/dark), DraftPanel, watchlist CRUD
 - **Sprint 3:** Apify removed, dynamic mock data, Serper-based hiring signals
 - **Sprint 4:** Dashboard content fixes — company_description, geo_signals, real traffic tab, navCard documents, always-visible Draft button
 - **Sprint 5:** URL normalization (`https://` prepend), null safety, LinkedIn → ATS job board scraping
+- **Sprint 6:** Production deployment — Vercel + Render, CORS from env var, frontend API base URL from env var
 
-## 9. Next Sprint Goal (Sprint 6) — Production Deployment
-Feature development is frozen. Sprint 6 is entirely deployment and security hardening. **No pipeline or UI changes until Sprint 6 is complete.**
+## 10. Outstanding Security Items (Do Before Going Public)
+These are not blocking for private testing but must be done before sharing the URL widely:
+- **Rate limiting on `/api/v1/chat` and `/api/v1/watchlist/run`** — currently unprotected, anyone can spam Gemini calls. Extract shared limiter to `backend/limiter.py` to avoid circular imports.
+- **Supabase Auth (`@supabase/ssr`)** — magic link email allowlist login + `middleware.ts` route protection. Do NOT use NextAuth/Auth.js — adding it on top of Supabase creates two auth systems competing for session ownership. Use Supabase's own auth package instead.
+- **Supabase RLS** — enable row level security on `analysis_jobs` and `watchlist` tables.
+- **Playwright smoke tests** — 3 golden-path tests: (1) home page loads, (2) submit URL → result renders, (3) dashboard elements visible. Run `npm init playwright@latest` in the frontend folder. Run tests against staging before every deploy.
 
-See `docs/PREFLIGHT_CHECKLIST.md` — all items there must be ticked before any code is written.
+## 11. Security Philosophy (Prompt Injection)
+Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
-### What breaks in production right now (confirmed against code):
-- CORS hardcoded to `localhost:3000` → `backend/main.py:33`
-- Backend URL hardcoded to `localhost:8000` → `frontend/app/page.tsx:87`, `AICMOChat.tsx:104`, `DraftPanel.tsx:46`
-- Resend sender hardcoded to `digest@yourdomain.com` → `backend/services/weekly_digest.py:88`
-- No rate limiting on `/api/v1/chat` or `/api/v1/watchlist/run` → DoW exposure
-- No user authentication → any caller can burn Gemini/Firecrawl/Serper quota
-- No Supabase RLS → anon key has full read access to all rows
+## 12. Next Steps
+Feature development resumes. Use Plan Mode for any new feature before writing code. See `MASTER_PLAN.md` for the full backlog.
 
-### Sprint 6 implementation order (after pre-flight checklist is done):
-1. **Backend hardening** — CORS from env var, extract `limiter` to `backend/limiter.py`, add rate limiting to chat/watchlist/digest, parameterize `RESEND_FROM_EMAIL`
-2. **Dockerfile** — `backend/Dockerfile`, Python 3.11-slim, non-root user, uvicorn with 2 workers
-3. **ECS Task Definition + Service** — SSM Parameter Store secrets injection, ALB health check, CloudWatch logs
-4. **Frontend API base URL** — replace all 3 `localhost:8000` hardcodes with `process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'`
-5. **Auth.js v5** — `frontend/lib/auth.ts` (EmailProvider + allowlist), `middleware.ts`, login page, API route
-6. **Netlify deploy + DNS** — trigger first build after env vars are set, point domains
-7. **Supabase RLS** — enable on `analysis_jobs` and `watchlist`, run policy SQL
-
-### Sprint 6 target architecture:
-```
-Browser → Netlify (app.yourdomain.com)
-            ↓ NEXT_PUBLIC_API_BASE_URL
-          Cloudflare WAF (optional)
-            ↓
-          AWS ALB (443, ACM cert)
-            ↓ port 8000 (ALB SG only)
-          ECS Fargate (Docker, non-root)
-            ↓ secrets from SSM Parameter Store
-          FastAPI + slowapi
-            ↓
-          Supabase (RLS enforced)
-```
-
-## 10. Sprint 7 (After Deployment) — Agent Output Quality
-Fine-tune all three pipeline agents for publication-ready content:
-- Researcher: Extract specific pricing tiers, feature gaps, and verbatim positioning language
-- Strategist: Named, attributed hiring insights with explicit strategic implications
-- Execution Agent: Content recommendations with specific angles, not topic headings
-- DraftPanel: Platform selector (X/LinkedIn/Reddit/Blog) + full publish-ready post output
-
-## 11. Workflow
+## 13. Workflow
 - **ALWAYS use Plan Mode first** for any feature touching the pipeline or layout.
 - **Context Compression:** Use `repomix` if context drift occurs.
 - **Testing:** Always test with `USE_MOCK_APIFY=true` first; use `false` only for targeted live validation.
 - **Next.js version:** This project runs Next.js 16.2.6 — APIs and conventions may differ from training data. Check `node_modules/next/dist/docs/` before writing any Next.js-specific code.
+- **Security review:** Before each major feature release, review against the [OWASP LLM Top 10](https://github.com/owasp/www-project-top-10-for-large-language-model-applications) (LLM01–LLM05 are most relevant).
