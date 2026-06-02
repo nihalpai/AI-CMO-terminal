@@ -29,14 +29,14 @@ type AnalysisReport = {
 interface CompanyPanelProps {
   report: AnalysisReport
   companyDomain: string
-  onNavigate: (tab: string) => void
+  onNavigate: (tab: 'company' | 'analytics' | 'agents' | 'reports') => void
 }
 
 const navCards = [
-  { icon: '📈', name: 'Traffic Intelligence', tab: 'analytics', badge: null },
-  { icon: '🤖', name: 'Content Playbook',     tab: 'agents',    badge: 'Live' },
-  { icon: '📋', name: 'Full GTM Report',       tab: 'reports',   badge: 'New' },
-  { icon: '🎯', name: 'Competitive Analysis',  tab: 'reports',   badge: null  },
+  { icon: '📈', name: 'Traffic Intelligence', tab: 'analytics' as const, badge: null },
+  { icon: '🤖', name: 'Content Playbook',     tab: 'agents' as const,    badge: 'Live' },
+  { icon: '📋', name: 'Full GTM Report',       tab: 'reports' as const,   badge: 'New' },
+  { icon: '🎯', name: 'Competitive Analysis',  tab: 'reports' as const,   badge: null  },
 ]
 
 export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanelProps) {
