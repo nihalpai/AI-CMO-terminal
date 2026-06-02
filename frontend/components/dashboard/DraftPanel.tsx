@@ -43,7 +43,7 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
     setDraft('')
     try {
       const message = `Please draft a complete, publish-ready ${contentType} based on this recommendation: "${itemText}". Make it specific, actionable, and tailored to the competitive intelligence in this report. Output only the final draft — no preamble.`
-      const res = await fetch('http://localhost:8000/api/v1/chat', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_id: jobId, message }),
