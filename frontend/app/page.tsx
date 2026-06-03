@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { useTheme } from '@/lib/theme'
 import { AnalysisProgressLoader } from '@/components/analysis/AnalysisProgressLoader'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 
@@ -32,6 +34,7 @@ function extractDomain(url: string): string {
 }
 
 export default function Home() {
+  const { theme, toggleTheme } = useTheme()
   const [url, setUrl] = useState('')
   const [appStatus, setAppStatus] = useState<AppStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -145,10 +148,17 @@ export default function Home() {
   const isBusy = appStatus === 'loading' || appStatus === 'polling'
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background px-4">
+    <main className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
       <div className="w-full max-w-lg space-y-8 rounded-xl bg-card border border-border p-8 shadow-2xl shadow-black/40">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-50">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100">
             AI CMO Terminal
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -164,7 +174,7 @@ export default function Home() {
             placeholder="https://competitor.com"
             disabled={isBusy}
             required
-            className="w-full rounded-lg bg-slate-800/60 border border-border px-4 py-3 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 disabled:opacity-50 transition-colors"
+            className="w-full rounded-lg bg-slate-800/60 border border-border px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 disabled:opacity-50 transition-colors"
           />
           <button
             type="submit"
