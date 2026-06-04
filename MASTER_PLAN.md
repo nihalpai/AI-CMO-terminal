@@ -82,30 +82,39 @@ A terminal-style AI CMO SaaS that takes any company URL and returns a full compe
 
 ---
 
-## 🚧 Sprint 7 — New Features (CURRENT)
+## 🚧 Sprint 7 — Lyzr Studio Agent Integration (CURRENT)
 
-Feature development resumes. Backlog items below — prioritise based on user direction.
+**Goal:** Replace the Lyzr Automata pipeline with 9 Lyzr Studio agents behind a `USE_LYZR_STUDIO` toggle. The original `ai_pipeline.py` must remain untouched — both pipelines run in parallel, switched by env var.
+
+See `LYZR_INTEGRATION.md` for the complete implementation spec.
+
+| Task | File | Status |
+|---|---|---|
+| All 9 agents built and tested in Studio | Lyzr Studio | ✅ Done |
+| Fill all `LYZR_AGENT_*` env vars in `.env` | `backend/.env` | ⬜ |
+| Add `lyzr-agent-api` to `requirements.txt` | `backend/requirements.txt` | ⬜ |
+| Create `lyzr_studio_pipeline.py` | `backend/` | ⬜ |
+| Create `agents/cmo_chat_agent_studio.py` | `backend/agents/` | ⬜ |
+| Add `USE_LYZR_STUDIO` toggle to `main.py` | `backend/main.py` | ⬜ |
+| Add `USE_LYZR_STUDIO` toggle to `routers/agents.py` | `backend/routers/agents.py` | ⬜ |
+| End-to-end test with `USE_LYZR_STUDIO=true` locally | local | ⬜ |
+| Add env vars to Render dashboard | Render | ⬜ |
+| Deploy to production | Render | ⬜ |
 
 ---
 
-## Backlog
+## Backlog (On Hold)
 
-### Security Hardening (Do Before Going Public)
-- **Rate limit `/api/v1/chat` and `/api/v1/watchlist/run`** — extract shared limiter to `backend/limiter.py`, apply `@limiter.limit("10/minute")` decorator to both endpoints
-- **Supabase Auth (`@supabase/ssr`)** — magic link + email allowlist. Do NOT use NextAuth — it conflicts with Supabase session management. Use `@supabase/ssr` + `middleware.ts` route protection.
-- **Supabase RLS** — `own_rows` policy on `watchlist`, UUID-unguessable SELECT policy on `analysis_jobs`
-- **Playwright smoke tests** — `npm init playwright@latest` in frontend; 3 tests: home loads, submit URL → result renders, dashboard elements visible. Hook into CI to run on every deploy.
-- **DoW token budgeting** — estimate token cost upfront, reserve in Redis/Supabase, reject with 429 if daily budget exceeded. Implement after auth lands so budget is scoped per user.
-
-### Agent Output Quality
-- **Researcher:** Extract specific pricing tiers, verbatim positioning language, named feature gaps
-- **Strategist:** Named + attributed hiring insights with explicit strategic implications
-- **Execution Agent:** Content recommendations with specific angles — `"[Format]: [Angle] — [Why it wins against [Competitor]]"`
-- **DraftPanel:** Platform selector (X, LinkedIn, Reddit, Blog) + full publish-ready post output
+### Security Hardening — Do Not Implement Until Explicitly Requested
+- **Rate limit `/api/v1/chat` and `/api/v1/watchlist/run`** — extract shared limiter to `backend/limiter.py`
+- **Supabase Auth (`@supabase/ssr`)** — magic link + email allowlist. Do NOT use NextAuth.
+- **Supabase RLS** — `own_rows` policy on `watchlist`, UUID-unguessable SELECT on `analysis_jobs`
+- **Playwright smoke tests** — 3 tests: home loads, submit URL → result renders, dashboard visible
 
 ### Future Features
 | Feature | Goal |
 |---------|------|
+| DraftPanel platform selector | Platform selector (X, LinkedIn, Reddit, Blog, HN, Email) wired to Content Writer agent |
 | Real-time monitoring | Daily Serper diff on watchlist items, alert on new hiring signal |
 | Multi-URL analysis | Analyze 2-3 competitors simultaneously, side-by-side view |
 | GA4 OAuth | Replace AI-estimated traffic mix with real GA4 data |
@@ -116,5 +125,6 @@ Feature development resumes. Backlog items below — prioritise based on user di
 ## Key Invariants (Never Change)
 - `USE_MOCK_APIFY=true` in `.env` during all development
 - Do not modify `main.py` routing logic (add `include_router` only)
+- Do not modify `ai_pipeline.py` — legacy pipeline must remain intact
 - Keep emerald/slate design system
-- Lyzr Automata `LinearSyncPipeline` is the orchestration layer — do not replace with raw LLM calls
+- Security hardening is intentionally deferred — do not implement until explicitly requested

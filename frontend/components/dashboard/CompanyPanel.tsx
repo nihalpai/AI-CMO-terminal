@@ -16,6 +16,7 @@ type AnalysisReport = {
     social: number
     paid: number
   }
+  company_one_liner?: string
   company_description?: string
   geo_signals?: {
     geo_score: number
@@ -71,7 +72,7 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
         <div className="border border-slate-800 rounded-lg p-5">
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-3">About</p>
           <p className="text-slate-400 text-sm leading-relaxed">
-            {report.company_description ?? report.summary}
+            {report.company_one_liner || report.company_description || report.summary}
           </p>
         </div>
 

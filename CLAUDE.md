@@ -11,9 +11,16 @@ This project uses a headless architecture: a Next.js frontend and a Python FastA
 
 ## 2. Tech Stack
 - **Frontend:** Next.js 16.2.6 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
-- **Backend:** Python FastAPI, Lyzr Automata, Gemini 2.5 Flash Lite (via OpenAI-compat endpoint)
+- **Backend:** Python FastAPI, Lyzr Automata (legacy, keep untouched), Lyzr Studio Agents (active — 9 agents), Gemini 2.5 Flash Lite, Claude Haiku, Perplexity Sonar Small
 - **Database:** Supabase (PostgreSQL) — `analysis_jobs` table, `watchlist` table
-- **APIs:** Firecrawl (scraping), Serper.dev (search)
+- **APIs:** Firecrawl (scraping), Serper.dev (search), Lyzr Studio API (`lyzr-agent-api` Python client)
+
+## 2a. Lyzr Studio Toggle
+`USE_LYZR_STUDIO=true/false` in `backend/.env` switches between pipelines:
+- `true` → `lyzr_studio_pipeline.py` (9 Studio agents: Company Classifier, Competitor Finder, Website Researcher, Pain Points Synthesizer, SEO Analyzer, GEO Scorer, Strategy Synthesizer, CMO Chat, Content Writer)
+- `false` → `ai_pipeline.py` (original Lyzr Automata pipeline, never modify this file)
+
+Both produce identical Supabase `result` schema. See `LYZR_INTEGRATION.md` for the complete integration spec including all agent input/output formats and the full orchestration code.
 
 ## 3. Production URLs
 - **Frontend:** https://don-drapor.vercel.app (Vercel)
@@ -44,17 +51,19 @@ Browser → Vercel (don-drapor.vercel.app)
 
 Fixed AI CMO Chat sidebar: `AICMOChat.tsx` (always visible, 340px)
 
-## 6. Agent Pipeline Keys (Execution Agent JSON output)
-All fields required in every analysis result:
-- `company_description` — factual 2-3 sentence company overview
-- `summary` — GTM strategy framing
-- `competitors` — deduplicated list, no publisher domains
-- `white_space_opportunities` — min 3 items
-- `recommended_channels` — min 4 items
-- `content_recommendations` — min 5 items (feeds agent cards)
-- `hiring_signals` — min 2 items, format: `"[Competitor]: [Signal] signals [Implication]"`
-- `traffic_signals` — `{search, direct, social, paid}` integers summing to ~100
-- `geo_signals` — `{geo_score, ai_visibility, schema_gaps, freshness_issue, geo_recommendations}`
+## 6. Agent Pipeline Keys (Required in every analysis result)
+All fields required in the Supabase `result` blob — both pipelines must produce these:
+- `company_description` — factual 3-4 sentence company overview (from Company Classifier)
+- `summary` — GTM strategy framing (from Strategy Synthesizer)
+- `competitors` — list of name strings, deduplicated, no publisher domains (from Competitor Finder)
+- `white_space_opportunities` — min 3 items (from SEO Analyzer)
+- `recommended_channels` — min 3 items (from SEO Analyzer)
+- `content_recommendations` — min 3 items (from SEO Analyzer `content_opportunities` field — note key rename)
+- `hiring_signals` — min 2 items, format: `"[Competitor]: [Signal] signals [Implication]"` (from `linkedin_scraper.py`)
+- `traffic_signals` — `{search, direct, social, paid}` integers summing to ~100 (from SEO Analyzer)
+- `geo_signals` — `{geo_score, ai_visibility, schema_gaps, freshness_issue, geo_recommendations}` (from GEO Scorer)
+
+See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 
 ## 7. Hiring Signals Source
 `backend/linkedin_scraper.py` — ATS job board strategy (NOT LinkedIn):
@@ -63,7 +72,9 @@ All fields required in every analysis result:
 - LinkedIn is permanently blocked by Firecrawl — never attempt to scrape it
 
 ## 8. Competitor Extraction Rules
-`_PUBLISHER_DOMAINS` blocklist in `ai_pipeline.py` filters out media/aggregator sites (Reddit, Forbes, YouTube, etc.) from being returned as competitors. Competitors are deduplicated with `list(dict.fromkeys(...))` after JSON parse.
+**Legacy pipeline (`ai_pipeline.py`):** `_PUBLISHER_DOMAINS` blocklist filters out media/aggregator sites. Competitors deduplicated with `list(dict.fromkeys(...))` after JSON parse.
+
+**Studio pipeline (`lyzr_studio_pipeline.py`):** Competitor Finder agent handles filtering via its instructions. Publisher domain exclusion and sister-company exclusion are enforced in the agent prompt.
 
 ## 9. Completed Sprints
 - **Sprint 1:** Core pipeline (Researcher → Strategist → Execution), Supabase caching, FastAPI async background tasks
@@ -84,7 +95,11 @@ These are not blocking for private testing but must be done before sharing the U
 Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
 ## 12. Next Steps
-Feature development resumes. Use Plan Mode for any new feature before writing code. See `MASTER_PLAN.md` for the full backlog.
+**Immediate task:** Implement the Lyzr Studio pipeline integration. See `LYZR_INTEGRATION.md` for the complete spec — all agent input/output formats, the full `run_analysis()` orchestration, output schema assembly, and files to create/modify.
+
+See `MASTER_PLAN.md` for the full task list.
+
+**Security hardening is on the backburner** — do not implement rate limiting on `/api/v1/chat`, Supabase Auth, or RLS until explicitly requested.
 
 ## 13. Workflow
 - **ALWAYS use Plan Mode first** for any feature touching the pipeline or layout.

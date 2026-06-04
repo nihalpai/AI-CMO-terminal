@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+USE_LYZR_STUDIO = os.getenv("USE_LYZR_STUDIO", "false").lower() == "true"
+
 router = APIRouter()
 
 _supabase = create_client(os.environ["SUPABASE_URL"], os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"])
@@ -108,6 +110,52 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class DraftRequest(BaseModel):
+    job_id: str
+    platform: str
+    content_recommendation: str
+
+
+@router.post("/api/v1/draft")
+async def draft(payload: DraftRequest) -> JSONResponse:
+    def _query():
+        return _supabase.table("analysis_jobs").select("result").eq("id", payload.job_id).single().execute()
+
+    try:
+        row = await asyncio.to_thread(_query)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    result = row.data.get("result", {}) if row.data else {}
+
+    if USE_LYZR_STUDIO:
+        from lyzr_studio_pipeline import call_agent_text
+        agent_input = {
+            "platform": payload.platform,
+            "content_recommendation": payload.content_recommendation,
+            "company_description": result.get("company_description", ""),
+            "summary": result.get("summary", ""),
+            "white_space_opportunities": result.get("white_space_opportunities", []),
+            "competitors": result.get("competitors", []),
+        }
+        reply = await asyncio.to_thread(
+            call_agent_text,
+            os.getenv("LYZR_AGENT_CONTENT_WRITER"),
+            agent_input,
+            payload.job_id,
+        )
+    else:
+        from agents.cmo_chat_agent import get_cmo_reply
+        message = (
+            f"Please draft a complete, publish-ready {payload.platform} post based on "
+            f"this recommendation: \"{payload.content_recommendation}\". "
+            "Output only the final draft — no preamble."
+        )
+        reply = await asyncio.to_thread(get_cmo_reply, message, result)
+
+    return JSONResponse({"reply": reply})
+
+
 @router.post("/api/v1/chat")
 async def chat(payload: ChatRequest) -> JSONResponse:
     def _query():
@@ -120,8 +168,10 @@ async def chat(payload: ChatRequest) -> JSONResponse:
 
     report_context = row.data.get("result", {}) if row.data else {}
 
-    # Import here to avoid circular imports at module load
-    from agents.cmo_chat_agent import get_cmo_reply
-
-    reply = await asyncio.to_thread(get_cmo_reply, payload.message, report_context)
+    if USE_LYZR_STUDIO:
+        from agents.cmo_chat_agent_studio import get_cmo_reply
+        reply = await asyncio.to_thread(get_cmo_reply, payload.message, report_context, payload.job_id)
+    else:
+        from agents.cmo_chat_agent import get_cmo_reply
+        reply = await asyncio.to_thread(get_cmo_reply, payload.message, report_context)
     return JSONResponse({"reply": reply})

@@ -20,12 +20,23 @@ const AGENT_CONTENT_TYPE: Record<string, string> = {
   'UGC Videos Agent': 'short-form video script (60 seconds)',
 }
 
+const AGENT_PLATFORM: Record<string, string> = {
+  'Reddit Agent': 'reddit',
+  'SEO Agent': 'blog',
+  'X Agent': 'twitter',
+  'Articles Agent': 'blog',
+  'Hacker News Agent': 'hackernews',
+  'LinkedIn Agent': 'linkedin',
+  'UGC Videos Agent': 'blog',
+}
+
 export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: DraftPanelProps) {
   const [draft, setDraft] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const contentType = AGENT_CONTENT_TYPE[agentName] ?? 'marketing asset'
+  const platform = AGENT_PLATFORM[agentName] ?? 'blog'
 
   useEffect(() => {
     if (isOpen && itemText && jobId) {
@@ -42,11 +53,10 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
     setIsLoading(true)
     setDraft('')
     try {
-      const message = `Please draft a complete, publish-ready ${contentType} based on this recommendation: "${itemText}". Make it specific, actionable, and tailored to the competitive intelligence in this report. Output only the final draft — no preamble.`
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/chat`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/draft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, message }),
+        body: JSON.stringify({ job_id: jobId, platform, content_recommendation: itemText }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()

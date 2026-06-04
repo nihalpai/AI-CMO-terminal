@@ -13,9 +13,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from supabase import create_client
 
-from ai_pipeline import run_analysis
-
 load_dotenv()
+
+USE_LYZR_STUDIO = os.getenv("USE_LYZR_STUDIO", "false").lower() == "true"
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 # Use service role key on the server so RLS is bypassed; fall back to anon key for local dev without the var set
@@ -75,6 +75,10 @@ async def _find_cached_job(url: str) -> str | None:
 
 async def analyze_url_background(job_id: str, url: str) -> None:
     try:
+        if USE_LYZR_STUDIO:
+            from lyzr_studio_pipeline import run_analysis
+        else:
+            from ai_pipeline import run_analysis
         result = await asyncio.to_thread(run_analysis, url)
         status = "completed"
     except Exception as e:
