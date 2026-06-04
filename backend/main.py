@@ -18,7 +18,8 @@ from ai_pipeline import run_analysis
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+# Use service role key on the server so RLS is bypassed; fall back to anon key for local dev without the var set
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"]
 
 supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -95,6 +96,21 @@ async def analyze_url_background(job_id: str, url: str) -> None:
 @app.get("/health")
 async def health() -> JSONResponse:
     return JSONResponse({"status": "ok"})
+
+
+@app.get("/api/v1/analyze/{job_id}")
+async def get_job_status(job_id: str) -> JSONResponse:
+    def _query():
+        return supabase_client.table("analysis_jobs") \
+            .select("status, result") \
+            .eq("id", job_id) \
+            .limit(1) \
+            .execute()
+
+    response = await asyncio.to_thread(_query)
+    if not response.data:
+        return JSONResponse({"status": "processing", "result": None})
+    return JSONResponse(response.data[0])
 
 
 @app.post("/api/v1/digest/run")

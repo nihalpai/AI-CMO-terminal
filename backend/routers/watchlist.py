@@ -13,7 +13,7 @@ from supabase import create_client
 load_dotenv()
 
 router = APIRouter()
-_supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+_supabase = create_client(os.environ["SUPABASE_URL"], os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"])
 
 
 class WatchlistItem(BaseModel):

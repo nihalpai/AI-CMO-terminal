@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter()
-_supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+_supabase = create_client(os.environ["SUPABASE_URL"], os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"])
 
 
 def _extract_domain(url: str) -> str:

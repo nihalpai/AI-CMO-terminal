@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
-import { supabase } from '@/lib/supabaseClient'
 import { useTheme } from '@/lib/theme'
 import { AnalysisProgressLoader } from '@/components/analysis/AnalysisProgressLoader'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
@@ -49,16 +48,15 @@ export default function Home() {
     }
   }, [])
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+
   function startPolling(id: string) {
     intervalRef.current = setInterval(async () => {
       try {
-        const { data, error } = await supabase
-          .from('analysis_jobs')
-          .select('status, result')
-          .eq('id', id)
-          .single()
+        const res = await fetch(`${API_BASE}/api/v1/analyze/${id}`)
+        if (!res.ok) return
 
-        if (error) return
+        const data = await res.json()
 
         if (data?.status === 'completed') {
           clearInterval(intervalRef.current!)
@@ -87,7 +85,7 @@ export default function Home() {
     setJobId('')
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/analyze`, {
+      const res = await fetch(`${API_BASE}/api/v1/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim() }),
@@ -103,11 +101,7 @@ export default function Home() {
 
       // Cached result — backend returned completed immediately
       if (data.status === 'completed') {
-        const { data: row } = await supabase
-          .from('analysis_jobs')
-          .select('result')
-          .eq('id', id)
-          .single()
+        const row = await fetch(`${API_BASE}/api/v1/analyze/${id}`).then(r => r.ok ? r.json() : null)
         if (row?.result) {
           setReport(row.result as AnalysisReport)
           setAppStatus('complete')
