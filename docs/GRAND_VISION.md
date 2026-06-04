@@ -140,11 +140,13 @@ Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
 
 ## 9. Roadmap
 
-### Current: Sprint 7 — Lyzr Studio Integration
-Implement `lyzr_studio_pipeline.py` and wire the `USE_LYZR_STUDIO` toggle. Full spec in `LYZR_INTEGRATION.md`.
+### ✅ Completed: Sprint 7 — Lyzr Studio Integration
+`lyzr_studio_pipeline.py` and `cmo_chat_agent_studio.py` implemented. `USE_LYZR_STUDIO` toggle live in both `main.py` and `routers/agents.py`. All 13 env vars filled locally and pipeline tested end-to-end. Pending: add Render dashboard env vars + flip toggle in production.
 
-### Next: Sprint 8 — DraftPanel Platform Selector
-Wire the Content Writer agent to the DraftPanel. User selects platform (X, LinkedIn, Reddit, Blog, HN, Email), backend calls the Content Writer agent with that platform and the stored analysis context.
+**Bug fixed:** Company Classifier URL-scoping rule added — agents now classify the specific product at the exact URL (e.g. `amazon.com` → ecommerce only, not AWS).
+
+### Current: Sprint 8 — DraftPanel Platform Selector
+Wire the Content Writer agent to the DraftPanel. User selects platform (X, LinkedIn, Reddit, Blog, HN, Email), backend calls `LYZR_AGENT_CONTENT_WRITER` with that platform + stored analysis context. Returns plain text, publish-ready copy displayed in DraftPanel.
 
 ### Future
 | Feature | Goal |

@@ -82,24 +82,40 @@ A terminal-style AI CMO SaaS that takes any company URL and returns a full compe
 
 ---
 
-## 🚧 Sprint 7 — Lyzr Studio Agent Integration (CURRENT)
+## ✅ Sprint 7 — Lyzr Studio Agent Integration (COMPLETE)
 
-**Goal:** Replace the Lyzr Automata pipeline with 9 Lyzr Studio agents behind a `USE_LYZR_STUDIO` toggle. The original `ai_pipeline.py` must remain untouched — both pipelines run in parallel, switched by env var.
+**Goal:** Replace the Lyzr Automata pipeline with 9 Lyzr Studio agents behind a `USE_LYZR_STUDIO` toggle. The original `ai_pipeline.py` remains untouched — both pipelines run in parallel, switched by env var.
 
 See `LYZR_INTEGRATION.md` for the complete implementation spec.
 
 | Task | File | Status |
 |---|---|---|
 | All 9 agents built and tested in Studio | Lyzr Studio | ✅ Done |
-| Fill all `LYZR_AGENT_*` env vars in `.env` | `backend/.env` | ⬜ |
-| Add `lyzr-agent-api` to `requirements.txt` | `backend/requirements.txt` | ⬜ |
-| Create `lyzr_studio_pipeline.py` | `backend/` | ⬜ |
-| Create `agents/cmo_chat_agent_studio.py` | `backend/agents/` | ⬜ |
-| Add `USE_LYZR_STUDIO` toggle to `main.py` | `backend/main.py` | ⬜ |
-| Add `USE_LYZR_STUDIO` toggle to `routers/agents.py` | `backend/routers/agents.py` | ⬜ |
-| End-to-end test with `USE_LYZR_STUDIO=true` locally | local | ⬜ |
-| Add env vars to Render dashboard | Render | ⬜ |
-| Deploy to production | Render | ⬜ |
+| Fill all `LYZR_AGENT_*` env vars in `.env` | `backend/.env` | ✅ Done |
+| Pipeline uses raw `httpx` — no extra package needed | `backend/requirements.txt` | ✅ N/A |
+| Create `lyzr_studio_pipeline.py` | `backend/` | ✅ Done |
+| Create `agents/cmo_chat_agent_studio.py` | `backend/agents/` | ✅ Done |
+| Add `USE_LYZR_STUDIO` toggle to `main.py` | `backend/main.py` | ✅ Done |
+| Add `USE_LYZR_STUDIO` toggle to `routers/agents.py` | `backend/routers/agents.py` | ✅ Done |
+| End-to-end test with `USE_LYZR_STUDIO=true` locally | local | ✅ Done |
+| Add env vars to Render dashboard | Render | ⬜ Pending |
+| Deploy to production with `USE_LYZR_STUDIO=true` | Render | ⬜ Pending |
+
+**Bug fixed during Sprint 7:** Company Classifier was classifying parent companies instead of the URL-specific product (e.g. `amazon.com` returned AWS + ecommerce together). Fixed by adding a URL-scoping rule as the first instruction in the agent: classify only the product/business unit at the exact URL provided, not the corporate parent's full portfolio.
+
+---
+
+## 🚧 Sprint 8 — DraftPanel Platform Selector (CURRENT)
+
+**Goal:** Wire the Content Writer agent to the DraftPanel. User selects a platform (X, LinkedIn, Reddit, Blog, HN, Email), backend calls the Content Writer agent with that platform and the stored analysis context.
+
+| Task | File | Status |
+|---|---|---|
+| Add platform selector UI to DraftPanel | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
+| Add `/api/v1/draft` endpoint | `backend/routers/agents.py` | ⬜ |
+| Call Content Writer agent from backend | `backend/lyzr_studio_pipeline.py` | ⬜ |
+| Pass `job_id` + `platform` + `content_recommendation` from frontend | frontend → backend | ⬜ |
+| Display plain text draft response in DraftPanel | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
 
 ---
 

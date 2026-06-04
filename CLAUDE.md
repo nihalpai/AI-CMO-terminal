@@ -13,7 +13,7 @@ This project uses a headless architecture: a Next.js frontend and a Python FastA
 - **Frontend:** Next.js 16.2.6 (App Router + Turbopack), React, Tailwind CSS, Shadcn/Base UI
 - **Backend:** Python FastAPI, Lyzr Automata (legacy, keep untouched), Lyzr Studio Agents (active — 9 agents), Gemini 2.5 Flash Lite, Claude Haiku, Perplexity Sonar Small
 - **Database:** Supabase (PostgreSQL) — `analysis_jobs` table, `watchlist` table
-- **APIs:** Firecrawl (scraping), Serper.dev (search), Lyzr Studio API (`lyzr-agent-api` Python client)
+- **APIs:** Firecrawl (legacy pipeline only), Serper.dev (hiring signals), Lyzr Studio API (raw `httpx` calls — no extra client library needed)
 
 ## 2a. Lyzr Studio Toggle
 `USE_LYZR_STUDIO=true/false` in `backend/.env` switches between pipelines:
@@ -83,6 +83,7 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 - **Sprint 4:** Dashboard content fixes — company_description, geo_signals, real traffic tab, navCard documents, always-visible Draft button
 - **Sprint 5:** URL normalization (`https://` prepend), null safety, LinkedIn → ATS job board scraping
 - **Sprint 6:** Production deployment — Vercel + Render, CORS from env var, frontend API base URL from env var
+- **Sprint 7:** Lyzr Studio 9-agent pipeline — `lyzr_studio_pipeline.py`, `cmo_chat_agent_studio.py`, `USE_LYZR_STUDIO` toggle. All env vars filled locally. Pending: Render dashboard env vars + production deploy.
 
 ## 10. Outstanding Security Items (Do Before Going Public)
 These are not blocking for private testing but must be done before sharing the URL widely:
@@ -95,9 +96,11 @@ These are not blocking for private testing but must be done before sharing the U
 Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
 ## 12. Next Steps
-**Immediate task:** Implement the Lyzr Studio pipeline integration. See `LYZR_INTEGRATION.md` for the complete spec — all agent input/output formats, the full `run_analysis()` orchestration, output schema assembly, and files to create/modify.
+**Sprint 7 is code-complete.** Remaining: add all `LYZR_AGENT_*` env vars + `USE_LYZR_STUDIO=true` to the Render dashboard, then redeploy.
 
-See `MASTER_PLAN.md` for the full task list.
+**Sprint 8 — DraftPanel Platform Selector:** Wire the Content Writer agent to the DraftPanel. User selects a platform (X, LinkedIn, Reddit, Blog, HN, Email) → backend calls `LYZR_AGENT_CONTENT_WRITER` with `{platform, content_recommendation, company_name, ...}` → plain text copy returned and displayed in DraftPanel.
+
+See `MASTER_PLAN.md` for the full task breakdown.
 
 **Security hardening is on the backburner** — do not implement rate limiting on `/api/v1/chat`, Supabase Auth, or RLS until explicitly requested.
 

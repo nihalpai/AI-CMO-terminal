@@ -1,6 +1,6 @@
 # Lyzr Studio Integration Guide
 
-All 9 Lyzr Studio agents are built and tested. This file is the complete specification for integrating them into the backend. Read this before writing any code.
+All 9 Lyzr Studio agents are built and tested. The backend integration is complete (`lyzr_studio_pipeline.py`, `agents/cmo_chat_agent_studio.py`, toggles in `main.py` and `routers/agents.py`). This file documents the full spec for reference and future changes.
 
 ---
 
@@ -17,11 +17,7 @@ The toggle lives in two places:
 - `backend/main.py` — `analyze_url_background()` function
 - `backend/routers/agents.py` — `chat()` endpoint
 
-**Install the Lyzr API client:**
-```bash
-pip install lyzr-agent-api
-```
-Add `lyzr-agent-api` to `backend/requirements.txt`.
+**HTTP client:** The pipeline uses raw `httpx` (already in `requirements.txt` via supabase dependency). No additional package needed — `lyzr-agent-api` is NOT used.
 
 ---
 
@@ -125,6 +121,8 @@ call_agent(COMPANY_CLASSIFIER_ID, "https://supabase.com")
 ```
 
 **Notes:** Output feeds every downstream agent. Must complete before Competitor Finder is called.
+
+**Important — URL scoping fix:** The agent instructions begin with a URL-scoping rule that forces classification of the specific product at the URL, not the parent company's full portfolio. This was added after observing that `amazon.com` returned both ecommerce and AWS classifications. The fix is in the first line of the agent instructions in Lyzr Studio.
 
 ---
 
@@ -555,12 +553,12 @@ def _assemble_result(classifier, competitors, seo_result,
 
 ---
 
-## 6. Files to Create
+## 6. Files Created (Sprint 7 Complete)
 
-### `backend/lyzr_studio_pipeline.py`
-Full pipeline: `call_agent()`, `call_agent_text()`, `run_analysis()`, `_format_hiring_signals()`, `_assemble_result()`. See Section 3 and Section 5 above.
+### `backend/lyzr_studio_pipeline.py` ✅
+Full pipeline: `call_agent()`, `call_agent_text()`, `run_analysis()`, `_format_hiring_signals()`, `_assemble_result()`. Uses raw `httpx` (not `lyzr-agent-api`). See Section 3 and Section 5 above for the reference spec.
 
-### `backend/agents/cmo_chat_agent_studio.py`
+### `backend/agents/cmo_chat_agent_studio.py` ✅
 Studio chat wrapper — thin file that calls the CMO Chat agent:
 
 ```python
@@ -583,9 +581,9 @@ def get_cmo_reply(message: str, report_context: dict, session_id: str) -> str:
 
 ---
 
-## 7. Files to Modify
+## 7. Files Modified (Sprint 7 Complete)
 
-### `backend/main.py`
+### `backend/main.py` ✅
 Add the toggle to `analyze_url_background()`. The `from ai_pipeline import run_analysis` line at the top of the file should be removed and replaced with a conditional import inside the function:
 
 ```python
@@ -609,8 +607,8 @@ async def analyze_url_background(job_id: str, url: str) -> None:
 
 Also remove the top-level `from ai_pipeline import run_analysis` import since it's now conditional.
 
-### `backend/routers/agents.py`
-Add the toggle to the `chat()` endpoint. The `session_id` (job_id) must be passed to the Studio version:
+### `backend/routers/agents.py` ✅
+Toggle added to the `chat()` endpoint. The `session_id` (job_id) must be passed to the Studio version:
 
 ```python
 # Add near top of file
@@ -640,34 +638,19 @@ async def chat(payload: ChatRequest) -> JSONResponse:
 ```
 
 ### `backend/requirements.txt`
-Add:
-```
-lyzr-agent-api
-```
+No change needed — pipeline uses `httpx` which is already present as a transitive dependency.
 
 ---
 
 ## 8. Testing Checklist
 
-Run these in order. Do not deploy until all pass.
+Local testing complete. Pending: Render env vars + production deploy.
 
-1. **Regression test** — `USE_LYZR_STUDIO=false`, run analysis on `https://supabase.com`, confirm original pipeline still works and result schema is unchanged.
+1. ✅ **Regression test** — `USE_LYZR_STUDIO=false`, original pipeline still works.
+2. ✅ **Studio pipeline test** — `USE_LYZR_STUDIO=true`, all 9 required fields present in Supabase result.
+3. ✅ **Dashboard render test** — all 4 tabs render without errors using Studio result.
+4. ✅ **Chat test** — `USE_LYZR_STUDIO=true`, CMO chat returns replies.
+5. ✅ **Toggle switch test** — original pipeline still works after toggling back.
+6. ⬜ **Production deploy** — add all `LYZR_AGENT_*` vars to Render dashboard, set `USE_LYZR_STUDIO=true`, redeploy.
 
-2. **Studio pipeline test** — `USE_LYZR_STUDIO=true`, run analysis on `https://supabase.com`. Confirm all 9 required fields are present in the Supabase result:
-   - `company_description` — non-empty string
-   - `summary` — non-empty string, mentions actual competitors
-   - `competitors` — list of strings (not objects)
-   - `white_space_opportunities` — min 3 items
-   - `recommended_channels` — min 3 items
-   - `content_recommendations` — min 3 items
-   - `hiring_signals` — min 2 items
-   - `traffic_signals` — `{search, direct, social, paid}` summing to 100
-   - `geo_signals` — `{geo_score, ai_visibility, schema_gaps, freshness_issue, geo_recommendations}`
-
-3. **Dashboard render test** — open the frontend, confirm all 4 tabs render without errors using the Studio result.
-
-4. **Chat test** — `USE_LYZR_STUDIO=true`, send a message in the CMO chat sidebar, confirm a reply comes back.
-
-5. **Toggle switch test** — flip back to `USE_LYZR_STUDIO=false`, confirm original pipeline still returns the same schema.
-
-6. **Deploy** — only after all above pass locally. Update Render env vars with all `LYZR_AGENT_*` values.
+**Post-deploy check:** Hit `https://don-drapor.onrender.com/health` and run one live analysis to confirm Studio pipeline works on Render's Python environment.

@@ -33,14 +33,16 @@ To classify any company given its URL into a structured profile identifying its 
 
 **Instructions:**
 ```
+Classify ONLY the specific product or business unit at the exact URL provided. Do not include other products, subsidiaries, or divisions of the parent company. The URL is the unit of analysis, not the corporate parent. If the URL is amazon.com, classify the ecommerce marketplace only — not AWS. If the URL is aws.amazon.com, classify the cloud infrastructure platform only — not the retail business.
+
 You will be given a company URL. Use your search tool to look up the company and understand what it does.
 
 Return a JSON object with exactly these keys:
 
-- "company_name": the human-readable name of the company
+- "company_name": the human-readable name of the company (e.g. "Apple", "Notion", "Stripe")
 - "industry": a precise label describing what the company sells or does — specific enough that someone unfamiliar with the company would know exactly what market it operates in. Never use broad or ambiguous labels. The label must describe the company's product or service, not the technology it uses internally. Broad labels like "software", "AI company", "fintech", or "insurance" are never acceptable — always drill down to the specific market niche such as "open-source backend-as-a-service", "AI agent liability insurance", or "B2B payment processing infrastructure".
 - "business_model": a short phrase describing how the company delivers value and how it generates revenue. Focus on two things: who pays, and what they pay for. Do not choose from a fixed list — describe it precisely in your own words. Note: classify as "marketplace" if the company connects two or more distinct user groups on a single platform.
-- "persona": the primary buyer persona in a short phrase
+- "persona": the primary buyer persona in a short phrase (e.g. "startup developers", "enterprise IT teams", "SMB marketing managers")
 - "description": a factual 3-4 sentence overview of what the company does, who it serves, how it makes money, and its market position. Written in third person, present tense. No marketing language.
 
 Return only the JSON object. No explanation, no markdown fences, no backticks.
