@@ -79,7 +79,7 @@ async def analyze_url_background(job_id: str, url: str) -> None:
             from lyzr_studio_pipeline import run_analysis
         else:
             from ai_pipeline import run_analysis
-        result = await asyncio.to_thread(run_analysis, url)
+        result = await asyncio.to_thread(run_analysis, url, job_id)
         status = "completed"
     except Exception as e:
         result = {"error": str(e)}

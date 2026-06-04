@@ -101,7 +101,10 @@ See `LYZR_INTEGRATION.md` for the complete implementation spec.
 | Add env vars to Render dashboard | Render | ⬜ Pending |
 | Deploy to production with `USE_LYZR_STUDIO=true` | Render | ⬜ Pending |
 
-**Bug fixed during Sprint 7:** Company Classifier was classifying parent companies instead of the URL-specific product (e.g. `amazon.com` returned AWS + ecommerce together). Fixed by adding a URL-scoping rule as the first instruction in the agent: classify only the product/business unit at the exact URL provided, not the corporate parent's full portfolio.
+**Bugs fixed during Sprint 7:**
+- **URL scoping:** Company Classifier was classifying parent companies instead of the URL-specific product (e.g. `amazon.com` returned AWS + ecommerce together). Fixed by adding a URL-scoping rule as the first instruction in the agent: classify only the product/business unit at the exact URL provided, not the corporate parent's full portfolio.
+- **Session ID bleed:** All pipeline agent calls were using `session_id="pipeline"` — a single shared session accumulating context from every analysis ever run. This caused context from previous analyses to bleed into new ones, producing inconsistent results vs. testing in Studio. Fixed: `run_analysis()` now accepts `job_id` and passes it as the `session_id` for all agent calls, giving each analysis its own isolated Lyzr session.
+- **`one_liner` vs `description`:** Company Classifier agent in Studio was outputting `one_liner` instead of `description`, causing `company_description` to come back empty in the frontend. Fix: update the agent instructions and structured output schema in Studio to use `"description"` as the key.
 
 ---
 

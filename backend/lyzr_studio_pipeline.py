@@ -57,13 +57,14 @@ def call_agent_text(agent_id: str, message, session_id: str = "pipeline") -> str
     )
 
 
-def run_analysis(url: str) -> dict:
+def run_analysis(url: str, job_id: str = "pipeline") -> dict:
+    sid = job_id  # Each job gets its own isolated Lyzr session — prevents context bleed between analyses
+
     # Step 1: Classify the company
-    classifier = call_agent(COMPANY_CLASSIFIER_ID, url)
-    print(f"[classifier] keys={list(classifier.keys())} description={classifier.get('description', 'MISSING')!r}")
+    classifier = call_agent(COMPANY_CLASSIFIER_ID, url, session_id=sid)
 
     # Step 2: Find competitors (classifier output + url)
-    competitor_result = call_agent(COMPETITOR_FINDER_ID, {**classifier, "url": url})
+    competitor_result = call_agent(COMPETITOR_FINDER_ID, {**classifier, "url": url}, session_id=sid)
     competitors = competitor_result["competitors"]  # list of {name, url}
 
     # Step 3: Research each competitor (one call per competitor)
@@ -72,11 +73,11 @@ def run_analysis(url: str) -> dict:
         research = call_agent(WEBSITE_RESEARCHER_ID, {
             "target_company": classifier["company_name"],
             "competitor": comp,
-        })
+        }, session_id=sid)
         website_research.append(research)
 
     # Step 4: Synthesize pain points from all website research
-    pain_points_result = call_agent(PAIN_POINTS_ID, website_research)
+    pain_points_result = call_agent(PAIN_POINTS_ID, website_research, session_id=sid)
 
     # Step 5: SEO analysis
     competitor_names = [c["name"] for c in competitors]
@@ -85,7 +86,7 @@ def run_analysis(url: str) -> dict:
         "persona": classifier["persona"],
         "competitor_names": competitor_names,
         "pain_points": pain_points_result["pain_points"],
-    })
+    }, session_id=sid)
 
     # Step 6: GEO score
     geo_result = call_agent(GEO_SCORER_ID, {
@@ -94,7 +95,7 @@ def run_analysis(url: str) -> dict:
             "competitor_seo_dominance": seo_result.get("competitor_seo_dominance", []),
             "keyword_gaps": seo_result.get("keyword_gaps", []),
         },
-    })
+    }, session_id=sid)
 
     # Step 7: Strategy synthesis (runs last — has full picture)
     strategy_result = call_agent(STRATEGY_SYNTHESIZER_ID, {
@@ -107,7 +108,7 @@ def run_analysis(url: str) -> dict:
         "geo_score": geo_result.get("geo_score", 0),
         "ai_visibility": geo_result.get("ai_visibility", "Moderate"),
         "competitor_seo_dominance": seo_result.get("competitor_seo_dominance", []),
-    })
+    }, session_id=sid)
 
     # Step 8: Hiring signals (stays in Python — unchanged from original pipeline)
     hiring_signals_raw = fetch_linkedin_signals(competitor_names)

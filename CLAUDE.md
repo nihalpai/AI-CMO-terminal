@@ -71,12 +71,17 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 - `USE_MOCK_APIFY=false` → Serper finds Greenhouse/Lever/Ashby URLs → Firecrawl scrapes → Serper news fallback
 - LinkedIn is permanently blocked by Firecrawl — never attempt to scrape it
 
-## 8. Competitor Extraction Rules
+## 8. Lyzr Session ID Rules
+- **Pipeline calls:** Every agent call in `run_analysis()` must use `job_id` as the `session_id`. Never use a hardcoded string like `"pipeline"` — shared session IDs cause context from previous analyses to bleed into new ones.
+- **CMO Chat calls:** Use `job_id` from the Supabase row as `session_id` — ties conversation memory to the specific analysis.
+- **Content Writer calls:** Use `job_id` as `session_id` for the same isolation reason.
+
+## 9. Competitor Extraction Rules
 **Legacy pipeline (`ai_pipeline.py`):** `_PUBLISHER_DOMAINS` blocklist filters out media/aggregator sites. Competitors deduplicated with `list(dict.fromkeys(...))` after JSON parse.
 
 **Studio pipeline (`lyzr_studio_pipeline.py`):** Competitor Finder agent handles filtering via its instructions. Publisher domain exclusion and sister-company exclusion are enforced in the agent prompt.
 
-## 9. Completed Sprints
+## 10. Completed Sprints
 - **Sprint 1:** Core pipeline (Researcher → Strategist → Execution), Supabase caching, FastAPI async background tasks
 - **Sprint 2:** Tabbed layout, theme toggle (light/dark), DraftPanel, watchlist CRUD
 - **Sprint 3:** Apify removed, dynamic mock data, Serper-based hiring signals
@@ -85,17 +90,17 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 - **Sprint 6:** Production deployment — Vercel + Render, CORS from env var, frontend API base URL from env var
 - **Sprint 7:** Lyzr Studio 9-agent pipeline — `lyzr_studio_pipeline.py`, `cmo_chat_agent_studio.py`, `USE_LYZR_STUDIO` toggle. All env vars filled locally. Pending: Render dashboard env vars + production deploy.
 
-## 10. Outstanding Security Items (Do Before Going Public)
+## 11. Outstanding Security Items (Do Before Going Public)
 These are not blocking for private testing but must be done before sharing the URL widely:
 - **Rate limiting on `/api/v1/chat` and `/api/v1/watchlist/run`** — currently unprotected, anyone can spam Gemini calls. Extract shared limiter to `backend/limiter.py` to avoid circular imports.
 - **Supabase Auth (`@supabase/ssr`)** — magic link email allowlist login + `middleware.ts` route protection. Do NOT use NextAuth/Auth.js — adding it on top of Supabase creates two auth systems competing for session ownership. Use Supabase's own auth package instead.
 - **Supabase RLS** — enable row level security on `analysis_jobs` and `watchlist` tables.
 - **Playwright smoke tests** — 3 golden-path tests: (1) home page loads, (2) submit URL → result renders, (3) dashboard elements visible. Run `npm init playwright@latest` in the frontend folder. Run tests against staging before every deploy.
 
-## 11. Security Philosophy (Prompt Injection)
+## 12. Security Philosophy (Prompt Injection)
 Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
-## 12. Next Steps
+## 13. Next Steps
 **Sprint 7 is code-complete.** Remaining: add all `LYZR_AGENT_*` env vars + `USE_LYZR_STUDIO=true` to the Render dashboard, then redeploy.
 
 **Sprint 8 — DraftPanel Platform Selector:** Wire the Content Writer agent to the DraftPanel. User selects a platform (X, LinkedIn, Reddit, Blog, HN, Email) → backend calls `LYZR_AGENT_CONTENT_WRITER` with `{platform, content_recommendation, company_name, ...}` → plain text copy returned and displayed in DraftPanel.
@@ -104,7 +109,7 @@ See `MASTER_PLAN.md` for the full task breakdown.
 
 **Security hardening is on the backburner** — do not implement rate limiting on `/api/v1/chat`, Supabase Auth, or RLS until explicitly requested.
 
-## 13. Workflow
+## 14. Workflow
 - **ALWAYS use Plan Mode first** for any feature touching the pipeline or layout.
 - **Context Compression:** Use `repomix` if context drift occurs.
 - **Testing:** Always test with `USE_MOCK_APIFY=true` first; use `false` only for targeted live validation.
