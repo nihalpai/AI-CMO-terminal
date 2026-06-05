@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { cleanUrls, renderInline } from '@/lib/text-utils'
+import { cleanUrls, renderInline, renderBlocks } from '@/lib/text-utils'
 
 type AnalysisReport = {
   summary: string
@@ -55,7 +55,7 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
         {/* Executive Summary */}
         <Card className="p-5">
           <h2 className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Executive Summary</h2>
-          <p className="text-slate-300 text-sm leading-relaxed">{report.summary}</p>
+          <div className="text-slate-300 text-sm leading-relaxed">{renderBlocks(report.summary)}</div>
         </Card>
 
         {/* Two-column grid */}
