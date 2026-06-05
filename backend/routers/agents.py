@@ -133,10 +133,12 @@ async def draft(payload: DraftRequest) -> JSONResponse:
         agent_input = {
             "platform": payload.platform,
             "content_recommendation": payload.content_recommendation,
+            "company_name": result.get("company_name", ""),
             "company_description": result.get("company_description", ""),
             "summary": result.get("summary", ""),
             "white_space_opportunities": result.get("white_space_opportunities", []),
             "competitors": result.get("competitors", []),
+            "hiring_signals": result.get("hiring_signals", []),
         }
         reply = await asyncio.to_thread(
             call_agent_text,

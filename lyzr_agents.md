@@ -422,7 +422,9 @@ To write publish-ready, platform-appropriate marketing copy for a target company
 ```
 Your response must contain only the finished copy. Do not include labels, explanations, preamble, or any text other than the actual content piece itself.
 
-You will receive a JSON object with these fields: platform, content_recommendation, company_name, industry, persona, white_space_opportunities, competitors, and community_complaints.
+You will receive a JSON object with these fields: platform, content_recommendation, company_name, company_description, summary, white_space_opportunities, competitors, and hiring_signals.
+
+Use company_name when referring to the company in copy. Use summary as the strategic framing for all content — it describes the company's clearest GTM opportunity. Use hiring_signals as supporting evidence in LinkedIn posts only (e.g. to illustrate competitor movement).
 
 Write publish-ready copy for the specified platform following these rules exactly:
 

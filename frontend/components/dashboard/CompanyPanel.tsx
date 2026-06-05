@@ -1,6 +1,23 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import Image from 'next/image'
+
+function CompanyLogo({ domain, size, fallback }: { domain: string; size: number; fallback: React.ReactNode }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <>{fallback}</>
+  return (
+    <Image
+      src={`https://www.google.com/s2/favicons?sz=64&domain=${domain}`}
+      alt={domain}
+      width={size}
+      height={size}
+      className="rounded object-contain"
+      onError={() => setFailed(true)}
+      unoptimized
+    />
+  )
+}
 
 type AnalysisReport = {
   summary: string
@@ -30,16 +47,17 @@ interface CompanyPanelProps {
   report: AnalysisReport
   companyDomain: string
   onNavigate: (tab: 'company' | 'analytics' | 'agents' | 'reports') => void
+  onFocusChat: () => void
 }
 
 const navCards = [
-  { icon: '📈', name: 'Traffic Intelligence', tab: 'analytics' as const, badge: null },
-  { icon: '🤖', name: 'Content Playbook',     tab: 'agents' as const,    badge: null },
-  { icon: '📋', name: 'Full GTM Report',       tab: 'reports' as const,   badge: null },
-  { icon: '📊', name: 'Analytics',             tab: 'analytics' as const, badge: null  },
+  { icon: '🤖', name: 'AI CMO Chat',     tab: null,              badge: null },
+  { icon: '🎯', name: 'Content Playbook', tab: 'agents' as const, badge: null },
+  { icon: '📋', name: 'Full GTM Report',  tab: 'reports' as const, badge: null },
+  { icon: '📊', name: 'Analytics',        tab: 'analytics' as const, badge: null },
 ]
 
-export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanelProps) {
+export function CompanyPanel({ report, companyDomain, onNavigate, onFocusChat }: CompanyPanelProps) {
   const brandInitial = companyDomain.charAt(0).toUpperCase()
 
   return (
@@ -48,8 +66,12 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-base shrink-0">
-            {brandInitial}
+          <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+            <CompanyLogo
+              domain={companyDomain}
+              size={32}
+              fallback={<span className="text-emerald-400 font-bold text-base">{brandInitial}</span>}
+            />
           </div>
           <div>
             <h1 className="text-slate-100 font-semibold text-base">{companyDomain}</h1>
@@ -74,7 +96,7 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
             {navCards.map((doc) => (
               <div
                 key={doc.name}
-                onClick={() => onNavigate(doc.tab)}
+                onClick={() => doc.tab ? onNavigate(doc.tab) : onFocusChat()}
                 className="flex items-center justify-between px-3 py-2 rounded hover:bg-slate-800 cursor-pointer group transition-colors"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -103,15 +125,20 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
-            {[...new Set(report.competitors)].slice(0, 6).map((competitor, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-800 cursor-pointer transition-colors"
-              >
-                <span className="text-sm leading-none shrink-0" aria-hidden="true">🛡️</span>
-                <span className="text-slate-400 text-xs truncate">{competitor}</span>
-              </div>
-            ))}
+            {[...new Set(report.competitors)].slice(0, 6).map((competitor, i) => {
+              const domain = competitor.toLowerCase().replace(/\s+/g, '') + '.com'
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-800 cursor-pointer transition-colors"
+                >
+                  <div className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                    <CompanyLogo domain={domain} size={16} fallback={<span className="text-xs">🛡️</span>} />
+                  </div>
+                  <span className="text-slate-400 text-xs truncate">{competitor}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 

@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import { DraftPanel } from './DraftPanel'
+import { cleanUrls, renderInline } from '@/lib/text-utils'
 
 interface AgentCardProps {
   name: string
@@ -12,14 +14,14 @@ interface AgentCardProps {
   jobId?: string
 }
 
-const iconColorMap: Record<string, string> = {
-  reddit: 'bg-orange-500/20 text-orange-400',
-  seo: 'bg-blue-500/20 text-blue-400',
-  x: 'bg-slate-700 text-slate-300',
-  articles: 'bg-purple-500/20 text-purple-400',
-  hn: 'bg-amber-500/20 text-amber-400',
-  linkedin: 'bg-blue-600/20 text-blue-400',
-  video: 'bg-orange-600/20 text-orange-400',
+const iconDomainMap: Record<string, string> = {
+  reddit: 'reddit.com',
+  seo: 'google.com',
+  x: 'x.com',
+  articles: 'nytimes.com',
+  hn: 'news.ycombinator.com',
+  linkedin: 'linkedin.com',
+  video: 'youtube.com',
 }
 
 const iconLabelMap: Record<string, string> = {
@@ -35,8 +37,9 @@ const iconLabelMap: Record<string, string> = {
 export function AgentCard({ name, icon, statusText, items, defaultOpen = false, jobId }: AgentCardProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [draftItem, setDraftItem] = useState<string | null>(null)
+  const [logoFailed, setLogoFailed] = useState(false)
 
-  const colorClass = iconColorMap[icon] ?? 'bg-emerald-500/20 text-emerald-400'
+  const domain = iconDomainMap[icon]
   const label = iconLabelMap[icon] ?? icon.slice(0, 1).toUpperCase()
 
   return (
@@ -47,11 +50,21 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
         className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-800/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 font-medium ${colorClass}`}
-          >
-            {label}
-          </span>
+          <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200/10">
+            {domain && !logoFailed ? (
+              <Image
+                src={`https://www.google.com/s2/favicons?sz=64&domain=${domain}`}
+                alt={name}
+                width={20}
+                height={20}
+                className="object-contain"
+                onError={() => setLogoFailed(true)}
+                unoptimized
+              />
+            ) : (
+              <span className="text-xs font-medium text-slate-600">{label}</span>
+            )}
+          </div>
           <div>
             <p className="text-slate-200 text-sm font-medium">{name}</p>
             <p className="text-slate-500 text-xs mt-0.5">{statusText}</p>
@@ -67,7 +80,7 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
             items.map((item, i) => (
               <div key={i} className="flex items-start gap-2 py-1 group">
                 <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
-                <p className="text-slate-400 text-xs leading-relaxed flex-1">{item}</p>
+                <p className="text-slate-400 text-xs leading-relaxed flex-1">{renderInline(cleanUrls(item))}</p>
                 {jobId && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setDraftItem(item) }}

@@ -142,6 +142,7 @@ def _assemble_result(classifier, competitors, seo_result,
                      geo_result, strategy_result, hiring_signals) -> dict:
     return {
         "company_one_liner": classifier.get("one_liner", ""),
+        "company_name": classifier.get("company_name", ""),
         "company_description": (classifier.get("description") or classifier.get("company_description", "")),
         "summary": strategy_result.get("summary", ""),
         "competitors": [c["name"] for c in competitors],

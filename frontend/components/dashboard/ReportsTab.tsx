@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { cleanUrls, renderInline } from '@/lib/text-utils'
 
 type AnalysisReport = {
   summary: string
@@ -83,7 +84,7 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
               {report.recommended_channels.map((ch, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
-                  <p className="text-slate-400 text-sm leading-relaxed">{ch}</p>
+                  <p className="text-slate-400 text-sm leading-relaxed">{renderInline(ch)}</p>
                 </div>
               ))}
             </div>
@@ -96,22 +97,23 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
               {report.white_space_opportunities.map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
-                  <p className="text-slate-400 text-sm leading-relaxed">{item}</p>
+                  <p className="text-slate-400 text-sm leading-relaxed">{renderInline(item)}</p>
                 </div>
               ))}
             </div>
           </Card>
 
           {/* Hiring Signals */}
-          <Card className="p-5">
+          <Card className="p-5 overflow-hidden">
             <h2 className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Hiring Signals</h2>
             <div className="space-y-2">
               {report.hiring_signals.map((item, i) => {
                 const [company, ...rest] = item.split(':')
+                const clean = cleanUrls(rest.join(':').trim())
                 return (
                   <div key={i} className="flex items-start gap-2">
                     <Badge variant="outline" className="text-xs shrink-0 mt-0.5">{company?.trim()}</Badge>
-                    <p className="text-slate-400 text-xs leading-relaxed">{rest.join(':').trim()}</p>
+                    <p className="text-slate-400 text-xs leading-relaxed break-words min-w-0">{clean}</p>
                   </div>
                 )
               })}
@@ -126,7 +128,7 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
             {report.content_recommendations.map((item, i) => (
               <div key={i} className="flex items-start gap-2 bg-slate-800/50 rounded-lg p-3">
                 <span className="text-emerald-400 text-xs font-mono shrink-0 mt-0.5">{String(i + 1).padStart(2, '0')}</span>
-                <p className="text-slate-400 text-xs leading-relaxed">{item}</p>
+                <p className="text-slate-400 text-xs leading-relaxed">{renderInline(item)}</p>
               </div>
             ))}
           </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { cleanUrls, renderBlocks } from '@/lib/text-utils'
 
 interface DraftPanelProps {
   isOpen: boolean
@@ -121,7 +122,7 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
         {/* Recommendation context */}
         <div className="px-5 py-3 border-b border-slate-800 bg-slate-800/50">
           <p className="text-slate-500 text-xs font-medium uppercase tracking-wide mb-1">Based on</p>
-          <p className="text-slate-400 text-xs leading-relaxed italic">"{itemText}"</p>
+          <p className="text-slate-400 text-xs leading-relaxed italic">"{cleanUrls(itemText)}"</p>
         </div>
 
         {/* Draft content */}
@@ -132,9 +133,9 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
               <p className="text-slate-500 text-xs">Drafting {contentType}...</p>
             </div>
           ) : draft ? (
-            <pre className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-              {draft}
-            </pre>
+            <div className="text-slate-300 text-sm leading-relaxed">
+              {renderBlocks(draft)}
+            </div>
           ) : null}
         </div>
       </div>

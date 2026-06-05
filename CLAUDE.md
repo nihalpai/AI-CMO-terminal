@@ -42,14 +42,20 @@ Browser → Vercel (don-drapor.vercel.app)
 **Local dev:** Frontend on port 3000, backend on port 8000. `NEXT_PUBLIC_API_BASE_URL` defaults to `http://localhost:8000` if not set.
 
 ## 5. Dashboard Tabs (All Complete)
+Default landing tab: **Company** (set in `DashboardLayout.tsx`).
+
 | Tab | Component | Key Data |
 |-----|-----------|----------|
-| Company | `CompanyPanel.tsx` | `company_description`, competitors, navCards |
+| Company | `CompanyPanel.tsx` | `company_description`, competitors, navCards (AI CMO Chat, Content Playbook, Full GTM Report, Analytics) |
 | Analytics | `AnalyticsCenter.tsx` | traffic_signals, white_space_opportunities, geo_signals |
 | Agents | `AgentsFeed.tsx` + `AgentCard.tsx` | 7 agent cards, DraftPanel |
 | Reports | `ReportsTab.tsx` | Full GTM report, hiring signals |
 
-Fixed AI CMO Chat sidebar: `AICMOChat.tsx` (always visible, 340px)
+Fixed AI CMO Chat sidebar: `AICMOChat.tsx` (always visible, 340px). Clicking "AI CMO Chat" in the Company navCards focuses the chat input via `focusTrigger` prop.
+
+**Company/competitor logos:** Google favicon service (`https://www.google.com/s2/favicons?sz=64&domain={domain}`) — configured in `next.config.ts` `images.remotePatterns`. Used in `CompanyPanel.tsx`, `TerminalHeader.tsx`, `AgentCard.tsx`.
+
+**Shared text utilities:** `frontend/lib/text-utils.tsx` — use `renderInline(text)` for markdown bold rendering, `cleanUrls(text)` to strip scraped markdown/URL artifacts from hiring signals, `renderBlocks(text)` for full multi-paragraph markdown rendering. Import these in any component that displays AI-generated or scraped text.
 
 ## 6. Agent Pipeline Keys (Required in every analysis result)
 All fields required in the Supabase `result` blob — both pipelines must produce these:

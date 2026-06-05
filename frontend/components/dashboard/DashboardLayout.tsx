@@ -38,6 +38,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ report, jobId, companyDomain, onReset }: DashboardLayoutProps) {
   const [activeTab, setActiveTab] = useState<TabId>('company')
+  const [focusChatTrigger, setFocusChatTrigger] = useState(0)
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 overflow-hidden">
@@ -48,7 +49,7 @@ export function DashboardLayout({ report, jobId, companyDomain, onReset }: Dashb
         <div className="flex flex-col flex-1 overflow-hidden border-r border-slate-800">
           <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'company' && <CompanyPanel report={report} companyDomain={companyDomain} onNavigate={setActiveTab} />}
+            {activeTab === 'company' && <CompanyPanel report={report} companyDomain={companyDomain} onNavigate={setActiveTab} onFocusChat={() => setFocusChatTrigger(n => n + 1)} />}
             {activeTab === 'analytics' && <AnalyticsCenter report={report} />}
             {activeTab === 'agents' && <AgentsFeed report={report} jobId={jobId} />}
             {activeTab === 'reports' && <ReportsTab report={report} companyDomain={companyDomain} onReset={onReset} />}
@@ -56,7 +57,7 @@ export function DashboardLayout({ report, jobId, companyDomain, onReset }: Dashb
         </div>
 
         {/* Fixed right chat */}
-        <AICMOChat jobId={jobId} />
+        <AICMOChat jobId={jobId} focusTrigger={focusChatTrigger} />
       </div>
     </div>
   )

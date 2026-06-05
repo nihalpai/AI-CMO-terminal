@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { renderInline } from '@/lib/text-utils'
 
 type AnalysisReport = {
   summary: string
@@ -71,9 +72,6 @@ export function AnalyticsCenter({ report }: AnalyticsCenterProps) {
               <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
                 AI-Estimated Traffic Mix
               </p>
-              <p className="text-slate-600 text-xs mb-4">
-                Derived from competitive intelligence — connect GA4 to see real data
-              </p>
             </div>
 
             {/* Traffic signals or empty state */}
@@ -129,7 +127,7 @@ export function AnalyticsCenter({ report }: AnalyticsCenterProps) {
                   className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-2 flex items-start gap-2"
                 >
                   <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1" />
-                  <p className="text-slate-400 text-xs leading-relaxed">{item}</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">{renderInline(item)}</p>
                 </div>
               ))
             ) : (
@@ -150,7 +148,7 @@ export function AnalyticsCenter({ report }: AnalyticsCenterProps) {
                     key={i}
                     className="bg-slate-800/50 border border-slate-700 rounded-lg p-3"
                   >
-                    <p className="text-slate-300 text-xs font-medium leading-relaxed">{channel}</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">{renderInline(channel)}</p>
                   </div>
                 ))
               ) : (
@@ -223,7 +221,7 @@ export function AnalyticsCenter({ report }: AnalyticsCenterProps) {
                     {report.geo_signals.geo_recommendations.map((rec, i) => (
                       <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-2 flex items-start gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1" />
-                        <p className="text-slate-400 text-xs leading-relaxed">{rec}</p>
+                        <p className="text-slate-400 text-xs leading-relaxed">{renderInline(rec)}</p>
                       </div>
                     ))}
                   </div>

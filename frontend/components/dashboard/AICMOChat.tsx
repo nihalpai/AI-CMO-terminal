@@ -10,6 +10,7 @@ interface Message {
 
 interface AICMOChatProps {
   jobId: string
+  focusTrigger?: number
 }
 
 const INITIAL_MESSAGE: Message = {
@@ -67,11 +68,16 @@ function AssistantBubble({ content }: { content: string }) {
   )
 }
 
-export function AICMOChat({ jobId }: AICMOChatProps) {
+export function AICMOChat({ jobId, focusTrigger }: AICMOChatProps) {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (focusTrigger) inputRef.current?.focus()
+  }, [focusTrigger])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -164,6 +170,7 @@ export function AICMOChat({ jobId }: AICMOChatProps) {
       <div className="px-3 py-3 border-t border-slate-800">
         <div className="flex items-center gap-2 bg-slate-900 rounded-xl px-3 py-2.5 border border-slate-700 focus-within:border-emerald-500/40 transition-colors">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}

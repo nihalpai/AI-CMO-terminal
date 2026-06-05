@@ -88,10 +88,6 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
           <span className="text-slate-200 text-sm font-semibold">Agents Feed</span>
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-600 text-sm cursor-pointer hover:text-slate-400 transition-colors">⚙</span>
-          <span className="text-slate-600 text-sm cursor-pointer hover:text-slate-400 transition-colors">↑↓</span>
-        </div>
       </div>
 
       {/* Agent List */}
