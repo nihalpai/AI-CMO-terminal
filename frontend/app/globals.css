@@ -117,5 +117,5 @@ html.light .ring-slate-800 { --tw-ring-color: #e2e8f0; }
 /* Sticky headers that use bg-slate-900 — ensure they stay opaque in light mode */
 html.light .sticky { background-color: #ffffff; }
 
-/* Emerald / green accent colours are intentionally NOT overridden —
-   they look great on both light and dark backgrounds.              */
+/* Emerald text — light tints are near-white so they need a dark override in light mode */
+html.light .text-emerald-100 { color: #065f46; } /* emerald-900 — readable on light mint bubble */

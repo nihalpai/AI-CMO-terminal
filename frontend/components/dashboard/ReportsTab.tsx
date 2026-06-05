@@ -54,11 +54,6 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
         {/* Executive Summary */}
         <Card className="p-5">
           <h2 className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Executive Summary</h2>
-          {report.company_description && (
-            <p className="text-slate-500 text-xs italic mb-3 pb-3 border-b border-slate-700/50 leading-relaxed">
-              {report.company_description}
-            </p>
-          )}
           <p className="text-slate-300 text-sm leading-relaxed">{report.summary}</p>
         </Card>
 
@@ -84,9 +79,12 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
           {/* Recommended Channels */}
           <Card className="p-5">
             <h2 className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Recommended Channels</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {report.recommended_channels.map((ch, i) => (
-                <Badge key={i} variant="secondary" className="text-xs">{ch}</Badge>
+                <div key={i} className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
+                  <p className="text-slate-400 text-sm leading-relaxed">{ch}</p>
+                </div>
               ))}
             </div>
           </Card>

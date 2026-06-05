@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
+import { ArrowUp } from 'lucide-react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -13,68 +14,53 @@ interface AICMOChatProps {
 
 const INITIAL_MESSAGE: Message = {
   role: 'assistant',
-  content: `hi, i'm your cmo. thanks for bringing me on.
+  content: `hi, i'm your ai cmo.
 
-if you've paid to rent me fully, every day i'll send you:
+i can help you with:
 
-• 2 seo / geo issues to fix
-• 1 written article
-• 2 reddit opportunities
-• 1 tweet
-• 1 linkedin post (coming soon)
+• competitive strategy and positioning
+• content planning across channels
+• seo / geo optimisation
+• channel recommendations and growth tactics
 
-else, let me at least set up the basic strategy for you and share some docs.
+how would you like to proceed?`,
+}
 
-let's grow.`,
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} className="text-slate-100 font-semibold">{part.slice(2, -2)}</strong>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  )
 }
 
 function AssistantBubble({ content }: { content: string }) {
-  // Parse the initial message specially to render bullet list
-  const lines = content.split('\n')
-  const bulletLines: string[] = []
-  const nonBulletParts: { type: 'text' | 'bullets'; lines: string[] }[] = []
-
-  let currentGroup: { type: 'text' | 'bullets'; lines: string[] } | null = null
-
-  for (const line of lines) {
-    if (line.startsWith('•')) {
-      if (currentGroup?.type === 'bullets') {
-        currentGroup.lines.push(line.replace(/^•\s*/, ''))
-      } else {
-        currentGroup = { type: 'bullets', lines: [line.replace(/^•\s*/, '')] }
-        nonBulletParts.push(currentGroup)
-      }
-    } else {
-      if (currentGroup?.type === 'text') {
-        currentGroup.lines.push(line)
-      } else {
-        currentGroup = { type: 'text', lines: [line] }
-        nonBulletParts.push(currentGroup)
-      }
-    }
-  }
+  const blocks = content.split(/\n{2,}/)
 
   return (
-    <div className="bg-slate-900 rounded-xl rounded-tl-sm p-3 text-slate-300 text-xs leading-relaxed border border-slate-800 max-w-[90%]">
-      {nonBulletParts.map((part, i) => {
-        if (part.type === 'bullets') {
+    <div className="bg-slate-900 rounded-xl rounded-tl-sm p-3 text-slate-300 text-xs leading-relaxed border border-slate-800 max-w-[90%] space-y-2">
+      {blocks.map((block, i) => {
+        const lines = block.split('\n')
+        const isList = lines.every((l) => /^[-•]\s/.test(l.trim()) || l.trim() === '')
+        if (isList) {
           return (
-            <ul key={i} className="list-disc list-inside space-y-0.5 my-1">
-              {part.lines.map((item, j) => (
-                <li key={j}>{item}</li>
+            <ul key={i} className="list-disc list-inside space-y-0.5 pl-1">
+              {lines.filter((l) => l.trim()).map((line, j) => (
+                <li key={j}>{renderInline(line.replace(/^[-•]\s*/, ''))}</li>
               ))}
             </ul>
           )
         }
         return (
-          <span key={i}>
-            {part.lines.map((line, j) => (
+          <p key={i}>
+            {lines.map((line, j) => (
               <React.Fragment key={j}>
                 {j > 0 && <br />}
-                {line}
+                {renderInline(line)}
               </React.Fragment>
             ))}
-          </span>
+          </p>
         )
       })}
     </div>
@@ -138,42 +124,10 @@ export function AICMOChat({ jobId }: AICMOChatProps) {
 
   return (
     <div className="h-full flex flex-col bg-slate-950 w-[340px] shrink-0 border-l border-slate-800 overflow-hidden">
-      {/* Section 1 — Hire CTA header */}
-      <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm shrink-0">
-            🤖
-          </div>
-          <div>
-            <p className="text-slate-200 text-xs font-semibold">Hire your full-time CMO</p>
-            <p className="text-slate-500 text-xs">AI-powered marketing at $99/month</p>
-          </div>
-        </div>
-        <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold rounded-md px-3 py-1.5 transition-colors shrink-0">
-          Hire Now →
-        </button>
-      </div>
-
-      {/* Section 2 — Talk to AI CMO header */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-300 text-xs font-medium">Talk to AI CMO</span>
-          <div className="w-2 h-2 rounded-full bg-emerald-400" />
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-400 transition-colors">
-            💬
-          </span>
-          <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-400 transition-colors">
-            📱
-          </span>
-          <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-400 transition-colors">
-            🕐
-          </span>
-          <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-400 transition-colors">
-            ⚙
-          </span>
-        </div>
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center gap-2">
+        <span className="text-slate-300 text-xs font-medium">Talk to AI CMO</span>
+        <div className="w-2 h-2 rounded-full bg-emerald-400" />
       </div>
 
       {/* Section 3 — Chat area */}
@@ -209,27 +163,21 @@ export function AICMOChat({ jobId }: AICMOChatProps) {
       {/* Section 4 — Input bar */}
       <div className="px-3 py-3 border-t border-slate-800">
         <div className="flex items-center gap-2 bg-slate-900 rounded-xl px-3 py-2.5 border border-slate-700 focus-within:border-emerald-500/40 transition-colors">
-          <span className="text-slate-600 text-sm cursor-pointer hover:text-slate-400 transition-colors">
-            📎
-          </span>
-          <span className="text-slate-600 text-sm cursor-pointer hover:text-slate-400 transition-colors">
-            @
-          </span>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything..."
-            className="flex-1 bg-transparent text-slate-300 text-xs placeholder-slate-600 outline-none"
+            className="flex-1 bg-transparent text-slate-300 text-xs placeholder-slate-400 outline-none"
             disabled={isLoading}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="w-6 h-6 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center text-slate-950 text-xs transition-colors disabled:opacity-40 shrink-0"
+            className="w-6 h-6 rounded-full bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center text-white transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed shrink-0"
           >
-            →
+            <ArrowUp className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

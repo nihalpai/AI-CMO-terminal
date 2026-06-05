@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import { Pencil } from 'lucide-react'
 
 type AnalysisReport = {
   summary: string
@@ -35,9 +34,9 @@ interface CompanyPanelProps {
 
 const navCards = [
   { icon: '📈', name: 'Traffic Intelligence', tab: 'analytics' as const, badge: null },
-  { icon: '🤖', name: 'Content Playbook',     tab: 'agents' as const,    badge: 'Live' },
-  { icon: '📋', name: 'Full GTM Report',       tab: 'reports' as const,   badge: 'New' },
-  { icon: '🎯', name: 'Competitive Analysis',  tab: 'reports' as const,   badge: null  },
+  { icon: '🤖', name: 'Content Playbook',     tab: 'agents' as const,    badge: null },
+  { icon: '📋', name: 'Full GTM Report',       tab: 'reports' as const,   badge: null },
+  { icon: '📊', name: 'Analytics',             tab: 'analytics' as const, badge: null  },
 ]
 
 export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanelProps) {
@@ -56,16 +55,6 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
             <h1 className="text-slate-100 font-semibold text-base">{companyDomain}</h1>
             <p className="text-slate-500 text-xs">Company Overview</p>
           </div>
-        </div>
-
-        {/* Quick-add pills */}
-        <div className="flex flex-wrap gap-2">
-          <span className="text-xs text-slate-500 bg-slate-800 rounded-full px-3 py-1 cursor-pointer hover:bg-slate-700 transition-colors">
-            + Add team size &amp; category
-          </span>
-          <span className="text-xs text-slate-500 bg-slate-800 rounded-full px-3 py-1 cursor-pointer hover:bg-slate-700 transition-colors">
-            + Improve writing quality
-          </span>
         </div>
 
         {/* Company description */}
@@ -108,16 +97,10 @@ export function CompanyPanel({ report, companyDomain, onNavigate }: CompanyPanel
 
         {/* Competitors section */}
         <div className="border border-slate-800 rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3">
             <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">
               Competitors
             </p>
-            <button
-              className="text-slate-500 hover:text-slate-300 transition-colors p-0.5"
-              aria-label="Edit competitors"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
             {[...new Set(report.competitors)].slice(0, 6).map((competitor, i) => (

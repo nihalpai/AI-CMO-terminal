@@ -37,11 +37,11 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ report, jobId, companyDomain, onReset }: DashboardLayoutProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('agents')
+  const [activeTab, setActiveTab] = useState<TabId>('company')
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 overflow-hidden">
-      <TerminalHeader companyDomain={companyDomain} creditsCount={5} />
+      <TerminalHeader companyDomain={companyDomain} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main area: tab nav + tab content */}
