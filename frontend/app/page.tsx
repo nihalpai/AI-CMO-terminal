@@ -156,7 +156,7 @@ export default function Home() {
             AI CMO Terminal
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Enter your competitor&apos;s URL to generate your GTM dashboard.
+            Enter your company&apos;s URL to generate your GTM dashboard.
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export default function Home() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://competitor.com"
+            placeholder="https://yourcompany.com"
             disabled={isBusy}
             required
             className="w-full rounded-lg bg-slate-800/60 border border-border px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 disabled:opacity-50 transition-colors"
