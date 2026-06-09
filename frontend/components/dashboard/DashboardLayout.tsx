@@ -34,11 +34,20 @@ interface DashboardLayoutProps {
   jobId: string
   companyDomain: string
   onReset: () => void
+  initialTab?: TabId
 }
 
-export function DashboardLayout({ report, jobId, companyDomain, onReset }: DashboardLayoutProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('company')
+export function DashboardLayout({ report, jobId, companyDomain, onReset, initialTab }: DashboardLayoutProps) {
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'company')
   const [focusChatTrigger, setFocusChatTrigger] = useState(0)
+
+  function handleTabChange(tab: TabId) {
+    setActiveTab(tab)
+    // Keep ?tab= in sync so the current URL stays shareable
+    const sp = new URLSearchParams(window.location.search)
+    sp.set('tab', tab)
+    window.history.replaceState(null, '', '?' + sp.toString())
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 overflow-hidden">
@@ -47,9 +56,9 @@ export function DashboardLayout({ report, jobId, companyDomain, onReset }: Dashb
       <div className="flex flex-1 overflow-hidden">
         {/* Main area: tab nav + tab content */}
         <div className="flex flex-col flex-1 overflow-hidden border-r border-slate-800">
-          <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabNav activeTab={activeTab} setActiveTab={handleTabChange} />
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'company' && <CompanyPanel report={report} companyDomain={companyDomain} onNavigate={setActiveTab} onFocusChat={() => setFocusChatTrigger(n => n + 1)} />}
+            {activeTab === 'company' && <CompanyPanel report={report} companyDomain={companyDomain} onNavigate={handleTabChange} onFocusChat={() => setFocusChatTrigger(n => n + 1)} />}
             {activeTab === 'analytics' && <AnalyticsCenter report={report} />}
             {activeTab === 'agents' && <AgentsFeed report={report} jobId={jobId} />}
             {activeTab === 'reports' && <ReportsTab report={report} companyDomain={companyDomain} onReset={onReset} />}

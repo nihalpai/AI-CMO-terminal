@@ -7,6 +7,9 @@ import { AnalysisProgressLoader } from '@/components/analysis/AnalysisProgressLo
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 
 type AppStatus = 'idle' | 'loading' | 'polling' | 'complete' | 'error'
+type TabId = 'company' | 'analytics' | 'agents' | 'reports'
+
+const VALID_TABS: TabId[] = ['company', 'analytics', 'agents', 'reports']
 
 type AnalysisReport = {
   summary: string
@@ -40,17 +43,61 @@ export default function Home() {
   const [report, setReport] = useState<AnalysisReport | null>(null)
   const [analyzedUrl, setAnalyzedUrl] = useState('')
   const [jobId, setJobId] = useState('')
+  const [initialTab, setInitialTab] = useState<TabId>('company')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+
+  // ── Cleanup polling on unmount ────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [])
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+  // ── Deep-link loader: restore dashboard from URL params on mount ──────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const jobParam = params.get('job')
+    const tabParam = params.get('tab') as TabId | null
+    const siteParam = params.get('site') ?? ''
 
-  function startPolling(id: string) {
+    if (!jobParam) return // Normal entry — nothing to restore
+
+    const tab: TabId = tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'company'
+
+    async function loadJob() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/analyze/${jobParam}`)
+        if (!res.ok) return // Job not found — silently stay idle
+
+        const data = await res.json()
+
+        if (data?.status === 'completed' && data.result) {
+          setReport(data.result as AnalysisReport)
+          setJobId(jobParam!)
+          setAnalyzedUrl(siteParam ? `https://${siteParam}` : '')
+          setInitialTab(tab)
+          setAppStatus('complete')
+        } else if (data?.status === 'processing') {
+          // Job still running — show progress and continue polling
+          setJobId(jobParam!)
+          setAnalyzedUrl(siteParam ? `https://${siteParam}` : '')
+          setAppStatus('polling')
+          startPolling(jobParam!, siteParam)
+        }
+        // If status is 'error' or unknown — stay idle (silent fallback)
+      } catch {
+        // Network error — stay idle
+      }
+    }
+
+    loadJob()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Intentionally empty — runs once on mount only
+
+  // domain is passed directly to avoid stale closure over analyzedUrl state
+  function startPolling(id: string, domain: string = '') {
     intervalRef.current = setInterval(async () => {
       try {
         const res = await fetch(`${API_BASE}/api/v1/analyze/${id}`)
@@ -63,6 +110,10 @@ export default function Home() {
           intervalRef.current = null
           setReport(data.result as AnalysisReport)
           setAppStatus('complete')
+          // Write the deep-link URL now that the job is complete
+          if (domain) {
+            window.history.pushState(null, '', `/?job=${id}&tab=company&site=${domain}`)
+          }
         } else if (data?.status === 'error') {
           clearInterval(intervalRef.current!)
           intervalRef.current = null
@@ -83,6 +134,7 @@ export default function Home() {
     setErrorMessage('')
     setReport(null)
     setJobId('')
+    setInitialTab('company')
 
     try {
       const res = await fetch(`${API_BASE}/api/v1/analyze`, {
@@ -95,9 +147,11 @@ export default function Home() {
 
       const data = await res.json()
       const id: string = data.job_id
+      const trimmedUrl = url.trim()
+      const domain = extractDomain(trimmedUrl)
 
       setJobId(id)
-      setAnalyzedUrl(url.trim())
+      setAnalyzedUrl(trimmedUrl)
 
       // Cached result — backend returned completed immediately
       if (data.status === 'completed') {
@@ -105,12 +159,14 @@ export default function Home() {
         if (row?.result) {
           setReport(row.result as AnalysisReport)
           setAppStatus('complete')
+          // Write deep-link URL
+          window.history.pushState(null, '', `/?job=${id}&tab=company&site=${domain}`)
           return
         }
       }
 
       setAppStatus('polling')
-      startPolling(id)
+      startPolling(id, domain)
     } catch (err) {
       setAppStatus('error')
       setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
@@ -124,6 +180,9 @@ export default function Home() {
     setAnalyzedUrl('')
     setJobId('')
     setErrorMessage('')
+    setInitialTab('company')
+    // Clear URL back to bare /
+    window.history.replaceState(null, '', '/')
   }
 
   // ── Full dashboard once analysis is complete ──────────────────────────────
@@ -134,6 +193,7 @@ export default function Home() {
         jobId={jobId}
         companyDomain={extractDomain(analyzedUrl)}
         onReset={handleReset}
+        initialTab={initialTab}
       />
     )
   }
