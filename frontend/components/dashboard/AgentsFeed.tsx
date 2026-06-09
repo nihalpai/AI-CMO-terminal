@@ -151,13 +151,12 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
           jobId={jobId}
         />
 
-        {/* 6. LinkedIn Agent — defaultOpen */}
+        {/* 6. LinkedIn Agent */}
         <AgentCard
           name="LinkedIn Agent"
           icon="linkedin"
           statusText={`${linkedinItems.length} post${linkedinItems.length !== 1 ? 's' : ''} ready`}
           items={linkedinItems}
-          defaultOpen={true}
           jobId={jobId}
         />
 
@@ -177,8 +176,8 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
           statusText={`GEO score ${report.geo_signals?.geo_score ?? 0} · ${report.geo_signals?.ai_visibility ?? 'Moderate'} AI visibility`}
           items={[]}
           jobId={jobId}
-          inlineAction={{ label: 'Generate llms.txt →', itemText: 'Generate full llms.txt AI discoverability file' }}
           description="Generates a deployment-ready llms.txt file for your website root, helping AI assistants like ChatGPT, Perplexity, and Claude accurately discover and cite your company."
+          cardAction={{ label: 'Generate llms.txt →', itemText: 'Generate full llms.txt AI discoverability file' }}
         />
       </div>
     </div>

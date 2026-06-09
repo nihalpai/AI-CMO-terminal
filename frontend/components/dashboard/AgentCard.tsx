@@ -89,46 +89,56 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
         )}
       </div>
 
-      {/* Static description (inlineAction cards only) */}
-      {description && (
-        <div className="px-4 pb-3 pl-14">
-          <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
-        </div>
-      )}
-
       {/* Expanded Content */}
       {isOpen && !inlineAction && (
         <div className="px-4 pb-3 pt-1">
-          {items.length > 0 ? (
-            items.map((item, i) => (
-              <div key={i} className="flex items-start gap-2 py-1 group">
-                <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
-                <p className="text-slate-400 text-xs leading-relaxed flex-1">{renderInline(cleanUrls(item))}</p>
-                {jobId && !cardAction && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDraftItem(item) }}
-                    className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors shrink-0 ml-1"
-                  >
-                    Draft →
-                  </button>
-                )}
-              </div>
-            ))
-          ) : (
+          {description && cardAction ? (
+            /* Description + action button on the same row */
             <div className="flex items-start gap-2 py-1">
-              <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
-              <p className="text-slate-400 text-xs leading-relaxed">No items available.</p>
+              <p className="text-slate-500 text-xs leading-relaxed flex-1">{description}</p>
+              {jobId && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDraftItem(cardAction.itemText) }}
+                  className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors shrink-0 ml-1"
+                >
+                  {cardAction.label}
+                </button>
+              )}
             </div>
-          )}
-          {jobId && cardAction && (
-            <div className="pt-2 mt-1 border-t border-slate-800/60">
-              <button
-                onClick={(e) => { e.stopPropagation(); setDraftItem(cardAction.itemText) }}
-                className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors"
-              >
-                {cardAction.label}
-              </button>
-            </div>
+          ) : (
+            <>
+              {items.length > 0 ? (
+                items.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 py-1 group">
+                    <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
+                    <p className="text-slate-400 text-xs leading-relaxed flex-1">{renderInline(cleanUrls(item))}</p>
+                    {jobId && !cardAction && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDraftItem(item) }}
+                        className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors shrink-0 ml-1"
+                      >
+                        Draft →
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-start gap-2 py-1">
+                  <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
+                  <p className="text-slate-400 text-xs leading-relaxed">No items available.</p>
+                </div>
+              )}
+              {jobId && cardAction && (
+                <div className="pt-2 mt-1 border-t border-slate-800/60">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDraftItem(cardAction.itemText) }}
+                    className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors"
+                  >
+                    {cardAction.label}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
