@@ -513,14 +513,15 @@ def _assemble_result(classifier, competitors, seo_result,
                      geo_result, strategy_result, hiring_signals) -> dict:
     """Map new agent outputs to the existing frontend-expected Supabase schema."""
     return {
-        # Company Classifier → company_description
-        "company_description": classifier.get("description", ""),
+        # Company Classifier → company_name + company_description
+        "company_name": classifier.get("company_name", ""),
+        "company_description": (classifier.get("description") or classifier.get("company_description", "")),
 
         # Strategy Synthesizer → summary
         "summary": strategy_result.get("summary", ""),
 
-        # Competitor Finder → name strings only (frontend doesn't use URLs yet)
-        "competitors": [c["name"] for c in competitors],
+        # Competitor Finder → {name, url} objects (frontend renders as clickable links)
+        "competitors": [{"name": c["name"], "url": c.get("url", "")} for c in competitors],
 
         # SEO Analyzer
         "white_space_opportunities": seo_result.get("white_space_opportunities", []),
@@ -547,9 +548,10 @@ def _assemble_result(classifier, competitors, seo_result,
 ```
 
 **Key schema mapping notes:**
+- `company_name` — now stored explicitly (used by Content Writer + LLMs.txt Generator agents)
 - `content_recommendations` (frontend key) ← `content_opportunities` (SEO Analyzer key)
 - `geo_signals` (frontend object) ← assembled from GEO Scorer individual fields
-- `competitors` (frontend) ← name strings only, not `{name, url}` objects
+- `competitors` ← `{name, url}` objects; frontend renders as clickable links with favicons
 
 ---
 
@@ -644,13 +646,50 @@ No change needed — pipeline uses `httpx` which is already present as a transit
 
 ## 8. Testing Checklist
 
-Local testing complete. Pending: Render env vars + production deploy.
+Sprint 7 local testing complete. Pending: Render env vars + production deploy.
 
 1. ✅ **Regression test** — `USE_LYZR_STUDIO=false`, original pipeline still works.
-2. ✅ **Studio pipeline test** — `USE_LYZR_STUDIO=true`, all 9 required fields present in Supabase result.
+2. ✅ **Studio pipeline test** — `USE_LYZR_STUDIO=true`, all required fields present in Supabase result (including `company_name`).
 3. ✅ **Dashboard render test** — all 4 tabs render without errors using Studio result.
 4. ✅ **Chat test** — `USE_LYZR_STUDIO=true`, CMO chat returns replies.
 5. ✅ **Toggle switch test** — original pipeline still works after toggling back.
-6. ⬜ **Production deploy** — add all `LYZR_AGENT_*` vars to Render dashboard, set `USE_LYZR_STUDIO=true`, redeploy.
+6. ✅ **Draft test** — clicking "Draft →" on any agent card item opens DraftPanel and returns platform-specific copy.
+7. ⬜ **Production deploy** — add all `LYZR_AGENT_*` vars to Render dashboard, set `USE_LYZR_STUDIO=true`, redeploy.
+8. ⬜ **LLMs.txt test** — clicking "Draft →" on any GEO Agent recommendation returns a valid `llms.txt` Markdown file starting with `# CompanyName`.
 
 **Post-deploy check:** Hit `https://don-drapor.onrender.com/health` and run one live analysis to confirm Studio pipeline works on Render's Python environment.
+
+---
+
+## 9. Sprint 8 Additions (Complete)
+
+### Content Writer agent input (current, as of Sprint 8)
+The `/api/v1/draft` endpoint sends this payload to `LYZR_AGENT_CONTENT_WRITER`:
+```python
+{
+    "platform": payload.platform,               # reddit|twitter|linkedin|hackernews|blog|email
+    "content_recommendation": payload.content_recommendation,
+    "company_name": result.get("company_name", ""),
+    "company_description": result.get("company_description", ""),
+    "summary": result.get("summary", ""),
+    "white_space_opportunities": result.get("white_space_opportunities", []),
+    "competitors": result.get("competitors", []),
+    "hiring_signals": result.get("hiring_signals", []),
+}
+```
+
+### Sprint 9 Addition: LLMs.txt Generator
+When `platform == "llmstxt"`, `/api/v1/draft` calls `LYZR_AGENT_LLMSTXT_GENERATOR` instead:
+```python
+{
+    "company_name": result.get("company_name", ""),
+    "company_url": row.data.get("url", ""),       # from analysis_jobs table
+    "company_description": result.get("company_description", ""),
+    "summary": result.get("summary", ""),
+    "competitors": result.get("competitors", []),
+    "geo_recommendations": result.get("geo_signals", {}).get("geo_recommendations", []),
+    "white_space_opportunities": result.get("white_space_opportunities", []),
+    "recommended_channels": result.get("recommended_channels", []),
+}
+```
+See `lyzr_agents.md` Agent 10 for the full LLMs.txt Generator agent spec.

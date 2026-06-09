@@ -81,6 +81,15 @@ def _map_report_to_agents(result: dict) -> list[dict]:
         "items": ["Short-form explainer: address the top white-space opportunity in under 60 seconds"],
     })
 
+    # GEO Agent — geo recommendations
+    geo = result.get("geo_signals", {})
+    agents.append({
+        "name": "GEO Agent",
+        "icon": "geo",
+        "status": f"GEO score {geo.get('geo_score', 0)} · {len(geo.get('geo_recommendations', []))} recommendations",
+        "items": geo.get("geo_recommendations", [])[:3],
+    })
+
     return agents
 
 
@@ -119,7 +128,7 @@ class DraftRequest(BaseModel):
 @router.post("/api/v1/draft")
 async def draft(payload: DraftRequest) -> JSONResponse:
     def _query():
-        return _supabase.table("analysis_jobs").select("result").eq("id", payload.job_id).single().execute()
+        return _supabase.table("analysis_jobs").select("result, url").eq("id", payload.job_id).single().execute()
 
     try:
         row = await asyncio.to_thread(_query)
@@ -127,25 +136,44 @@ async def draft(payload: DraftRequest) -> JSONResponse:
         raise HTTPException(status_code=404, detail="Job not found")
 
     result = row.data.get("result", {}) if row.data else {}
+    company_url = row.data.get("url", "") if row.data else ""
 
     if USE_LYZR_STUDIO:
         from lyzr_studio_pipeline import call_agent_text
-        agent_input = {
-            "platform": payload.platform,
-            "content_recommendation": payload.content_recommendation,
-            "company_name": result.get("company_name", ""),
-            "company_description": result.get("company_description", ""),
-            "summary": result.get("summary", ""),
-            "white_space_opportunities": result.get("white_space_opportunities", []),
-            "competitors": result.get("competitors", []),
-            "hiring_signals": result.get("hiring_signals", []),
-        }
-        reply = await asyncio.to_thread(
-            call_agent_text,
-            os.getenv("LYZR_AGENT_CONTENT_WRITER"),
-            agent_input,
-            payload.job_id,
-        )
+        if payload.platform == "llmstxt":
+            agent_input = {
+                "company_name": result.get("company_name", ""),
+                "company_url": company_url,
+                "company_description": result.get("company_description", ""),
+                "summary": result.get("summary", ""),
+                "competitors": result.get("competitors", []),
+                "geo_recommendations": result.get("geo_signals", {}).get("geo_recommendations", []),
+                "white_space_opportunities": result.get("white_space_opportunities", []),
+                "recommended_channels": result.get("recommended_channels", []),
+            }
+            reply = await asyncio.to_thread(
+                call_agent_text,
+                os.getenv("LYZR_AGENT_LLMSTXT_GENERATOR"),
+                agent_input,
+                payload.job_id,
+            )
+        else:
+            agent_input = {
+                "platform": payload.platform,
+                "content_recommendation": payload.content_recommendation,
+                "company_name": result.get("company_name", ""),
+                "company_description": result.get("company_description", ""),
+                "summary": result.get("summary", ""),
+                "white_space_opportunities": result.get("white_space_opportunities", []),
+                "competitors": result.get("competitors", []),
+                "hiring_signals": result.get("hiring_signals", []),
+            }
+            reply = await asyncio.to_thread(
+                call_agent_text,
+                os.getenv("LYZR_AGENT_CONTENT_WRITER"),
+                agent_input,
+                payload.job_id,
+            )
     else:
         from agents.cmo_chat_agent import get_cmo_reply
         message = (

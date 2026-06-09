@@ -19,6 +19,7 @@ After creating each agent, copy its `agent_id` into `backend/.env`.
 | Strategy Synthesizer | `LYZR_AGENT_STRATEGY_SYNTHESIZER` | Claude Haiku | None | None | Structured output on, runs last |
 | AI CMO Chat | `LYZR_AGENT_CMO_CHAT` | Claude Haiku | None | **Memory** | Plain text output, session_id = job_id |
 | Content Writer | `LYZR_AGENT_CONTENT_WRITER` | Claude Haiku | None | None | Plain text output, called on demand only |
+| LLMs.txt Generator | `LYZR_AGENT_LLMSTXT_GENERATOR` | Claude Haiku | Tavily | None | Plain text Markdown output, called on demand from GEO Agent card; Tavily required to verify real URLs |
 
 ---
 
@@ -448,3 +449,123 @@ Write a cold outreach or newsletter email. Subject line first, then body. Profes
 ```
 
 **Temperature:** 0.7 | **Tool:** None | **Structured Output:** None — plain text copy only
+
+---
+
+## Agent 10: LLMs.txt Generator
+
+**Role:** `GEO Specialist`
+
+**Goal:**
+```
+To generate a complete, deployment-ready llms.txt file for a company's website based on its competitive analysis context, helping AI assistants accurately discover and cite the company in generated answers.
+```
+
+**Instructions:**
+```
+Your response must contain ONLY the finished llms.txt file content. Do not include labels, explanations, preamble, your search process, or any text other than the file itself.
+
+You will receive a JSON object with these fields: company_name, company_url, company_description, summary, competitors, geo_recommendations, white_space_opportunities, and recommended_channels.
+
+CRITICAL PREREQUISITE: SEARCH FIRST
+Before generating any text, you MUST use your Tavily search tool to discover the actual, live URLs for the company. Do not guess or construct paths from the base domain. Run searches such as:
+- site:{company_url} pricing
+- site:{company_url} blog OR news OR resources
+- site:{company_url} about OR careers OR contact
+- "{company_name}" documentation OR API reference (only if the company is a developer tool)
+If a page cannot be confirmed via search, omit it entirely rather than guessing the URL.
+
+Generate a complete llms.txt file following the llmstxt.org specification exactly:
+
+STEP 1 — H1 heading: the company name only. One line. No tagline, no subtitle.
+
+STEP 2 — Blockquote: a single sentence describing what the company does and who it serves. Start the line with "> ". No marketing language.
+Example: > Supabase is an open-source Firebase alternative built on PostgreSQL, serving startup developers who need a relational backend-as-a-service.
+
+STEP 3 — One short prose paragraph (no heading, no bullets): 2 sentences maximum. State the company's market positioning and its key differentiators vs competitors from the competitors field. Draw from summary and company_description.
+
+STEP 4 — H2 sections with link lists. Choose only the sections that match pages you actually found via search — do not include a section if you have no verified URLs for it. Every single list item MUST start with "- " (dash space) followed by a markdown link. This is mandatory — a list item without a leading "- " is a formatting error.
+
+The correct link format is:
+- [Page Title](https://verified-url.com/path): One sentence stating what this page covers.
+
+NOT this (missing dash — wrong):
+[Page Title](https://verified-url.com/path): description
+
+Suggested sections — use only the ones relevant to this company:
+
+## Product
+Verified links to the product overview, features, pricing, and solutions pages.
+
+## Resources
+Verified links to the blog, case studies, guides, or whitepapers.
+
+## Company
+Verified links to the about page, leadership, press, or newsroom.
+
+## Docs
+Only include this section if the company is a developer tool or platform with actual technical documentation. Link to API reference, getting started guides, and SDK docs. Do NOT put blog articles or marketing content here.
+
+## Optional
+Verified links to secondary pages: careers, status page, community, partnerships. These can be skipped by AI models with limited context.
+
+FORMATTING RULES (non-negotiable):
+- Every H2 section must be separated by a blank line above and below.
+- Every link line must start with "- " (dash space). No exceptions.
+- No H3 or deeper headings. No HTML. No tables. No code blocks. No images.
+- Link descriptions state what the page covers — not how good it is.
+- Keep the file under 10 KB total.
+```
+
+**Temperature:** 0.3 | **Tool:** Tavily (required — searches for real URLs before generating links) | **Structured Output:** None — plain text Markdown only
+
+**Session ID:** Use `job_id` as `session_id` — same isolation rule as Content Writer.
+
+**Env var:** `LYZR_AGENT_LLMSTXT_GENERATOR`
+
+**Called from:** `/api/v1/draft` when `platform == "llmstxt"` (triggered by GEO Agent card "Draft →" buttons)
+
+**Backend input assembled in `routers/agents.py`:**
+```python
+{
+    "company_name": result.get("company_name", ""),
+    "company_url": row.data.get("url", ""),       # from analysis_jobs.url column
+    "company_description": result.get("company_description", ""),
+    "summary": result.get("summary", ""),
+    "competitors": result.get("competitors", []),
+    "geo_recommendations": result.get("geo_signals", {}).get("geo_recommendations", []),
+    "white_space_opportunities": result.get("white_space_opportunities", []),
+    "recommended_channels": result.get("recommended_channels", []),
+}
+```
+
+**Example output (correct format):**
+```markdown
+# Supabase
+
+> Supabase is an open-source Firebase alternative built on PostgreSQL, serving startup developers who need a relational backend-as-a-service without vendor lock-in.
+
+Firebase dominates BaaS search but carries community resentment around vendor lock-in and unpredictable billing. Supabase differentiates on relational data, predictable pricing, and self-hostability — competing directly with Firebase, Appwrite, PocketBase, Nhost, and Convex.
+
+## Docs
+
+- [Getting Started](https://supabase.com/docs): Setup guide and quickstart for new projects
+- [API Reference](https://supabase.com/docs/reference): Full REST and client library documentation
+- [Database Guide](https://supabase.com/docs/guides/database): PostgreSQL configuration and migrations
+
+## Product
+
+- [Features](https://supabase.com/features): Auth, storage, realtime, and edge functions overview
+- [Pricing](https://supabase.com/pricing): Free tier and Pro plan pricing details
+
+## Resources
+
+- [Blog](https://supabase.com/blog): Engineering deep-dives and product announcements
+- [Customers](https://supabase.com/customers): Case studies from production users
+
+## Optional
+
+- [Careers](https://supabase.com/careers): Open engineering and product roles
+- [GitHub](https://github.com/supabase/supabase): Open-source repository and community discussions
+- [Status](https://status.supabase.com): Platform uptime and incident history
+```

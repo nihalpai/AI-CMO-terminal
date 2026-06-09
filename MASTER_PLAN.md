@@ -1,7 +1,7 @@
 # Don Drapor — AI CMO Terminal: Master Plan
 
 ## Product Vision
-A terminal-style AI CMO SaaS that takes any company URL and returns a full competitive intelligence report with actionable GTM strategy, surfaced through a 4-tab dashboard with 7 specialized AI agent cards.
+A terminal-style AI CMO SaaS that takes any company URL and returns a full competitive intelligence report with actionable GTM strategy, surfaced through a 4-tab dashboard with 8 specialized AI agent cards.
 
 **Live at:** https://don-drapor.vercel.app
 
@@ -108,17 +108,74 @@ See `LYZR_INTEGRATION.md` for the complete implementation spec.
 
 ---
 
-## 🚧 Sprint 8 — DraftPanel Platform Selector (CURRENT)
+## ✅ Sprint 8 — DraftPanel Platform Selector (COMPLETE)
 
-**Goal:** Wire the Content Writer agent to the DraftPanel. User selects a platform (X, LinkedIn, Reddit, Blog, HN, Email), backend calls the Content Writer agent with that platform and the stored analysis context.
+**Goal:** Wire the Content Writer agent to the DraftPanel. Agent card items become "Draft →" triggers; backend calls Content Writer with platform + full report context.
 
 | Task | File | Status |
 |---|---|---|
-| Add platform selector UI to DraftPanel | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
-| Add `/api/v1/draft` endpoint | `backend/routers/agents.py` | ⬜ |
-| Call Content Writer agent from backend | `backend/lyzr_studio_pipeline.py` | ⬜ |
-| Pass `job_id` + `platform` + `content_recommendation` from frontend | frontend → backend | ⬜ |
-| Display plain text draft response in DraftPanel | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
+| Platform selector UI in DraftPanel (`AGENT_PLATFORM` + `AGENT_CONTENT_TYPE` maps) | `frontend/components/dashboard/DraftPanel.tsx` | ✅ Done |
+| Add `/api/v1/draft` endpoint + `DraftRequest` model | `backend/routers/agents.py` | ✅ Done |
+| Call Content Writer agent from `/api/v1/draft` | `backend/routers/agents.py` | ✅ Done |
+| Pass `job_id` + `platform` + `content_recommendation` from frontend | frontend → backend | ✅ Done |
+| Display plain text draft + Copy + Regenerate in DraftPanel | `frontend/components/dashboard/DraftPanel.tsx` | ✅ Done |
+| Store `company_name` in Supabase result | `backend/lyzr_studio_pipeline.py` | ✅ Done |
+| Pass `company_name` + `hiring_signals` to Content Writer | `backend/routers/agents.py` | ✅ Done |
+| Update Content Writer agent instructions to match actual payload | `lyzr_agents.md` + Lyzr Studio | ✅ Done |
+| Competitors stored as `{name, url}` objects; clickable links in UI | `lyzr_studio_pipeline.py`, `CompanyPanel.tsx`, `ReportsTab.tsx` | ✅ Done |
+
+**Also completed:** UI/UX polish across all 4 tabs, `text-utils.tsx` shared rendering utilities, `TerminalHeader.tsx` redesign.
+
+---
+
+## 🚧 Sprint 9 — GEO Agent Card + LLMs.txt Generator (CURRENT)
+
+**Goal:** Surface GEO recommendations in the Agents tab via a new GEO Agent card. Add an LLMs.txt Generator agent (Agent 10) that produces a deployment-ready `llms.txt` file for the user's company website — improving AI discoverability (GEO score).
+
+### What is LLMs.txt?
+A Markdown file placed at `yourdomain.com/llms.txt` (spec: llmstxt.org, created Sep 2024 by Jeremy Howard). Gives AI assistants a structured, low-token summary of a website — improving citation likelihood and GEO scores. Adopted by Anthropic, Stripe, Vercel, Cloudflare, Supabase.
+
+### Tasks
+
+| Task | File | Status |
+|---|---|---|
+| Create LLMs.txt Generator agent in Lyzr Studio | Lyzr Studio | ⬜ |
+| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to `backend/.env` | `backend/.env` | ⬜ |
+| Add `LLMSTXT_GENERATOR_ID` env var to `lyzr_studio_pipeline.py` | `backend/lyzr_studio_pipeline.py` | ⬜ |
+| Add `"llmstxt"` platform branch to `/api/v1/draft` endpoint | `backend/routers/agents.py` | ⬜ |
+| Fetch `url` alongside `result` from Supabase in `draft()` | `backend/routers/agents.py` | ⬜ |
+| Add GEO Agent card to `_map_report_to_agents()` | `backend/routers/agents.py` | ⬜ |
+| Add `geo` icon to `AgentCard.tsx` icon map | `frontend/components/dashboard/AgentCard.tsx` | ⬜ |
+| Add `AGENT_PLATFORM['GEO Agent'] = 'llmstxt'` to DraftPanel maps | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
+| Add GEO Agent card to AgentsFeed | `frontend/components/dashboard/AgentsFeed.tsx` | ⬜ |
+| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to Render dashboard env vars | Render | ⬜ |
+
+### Agent Input (sent from `/api/v1/draft` when `platform == "llmstxt"`)
+```python
+{
+    "company_name": result.get("company_name", ""),
+    "company_url": row.data.get("url", ""),        # fetched from analysis_jobs.url
+    "company_description": result.get("company_description", ""),
+    "summary": result.get("summary", ""),
+    "competitors": result.get("competitors", []),
+    "geo_recommendations": result.get("geo_signals", {}).get("geo_recommendations", []),
+    "white_space_opportunities": result.get("white_space_opportunities", []),
+    "recommended_channels": result.get("recommended_channels", []),
+}
+```
+
+### GEO Agent Card Data (in `_map_report_to_agents()`)
+```python
+geo = result.get("geo_signals", {})
+agents.append({
+    "name": "GEO Agent",
+    "icon": "geo",
+    "status": f"GEO score {geo.get('geo_score', 0)} · {len(geo.get('geo_recommendations', []))} recommendations",
+    "items": geo.get("geo_recommendations", [])[:3],
+})
+```
+
+See `lyzr_agents.md` Agent 10 for the full LLMs.txt Generator agent spec (role, goal, instructions, structured output).
 
 ---
 
@@ -133,7 +190,6 @@ See `LYZR_INTEGRATION.md` for the complete implementation spec.
 ### Future Features
 | Feature | Goal |
 |---------|------|
-| DraftPanel platform selector | Platform selector (X, LinkedIn, Reddit, Blog, HN, Email) wired to Content Writer agent |
 | Real-time monitoring | Daily Serper diff on watchlist items, alert on new hiring signal |
 | Multi-URL analysis | Analyze 2-3 competitors simultaneously, side-by-side view |
 | GA4 OAuth | Replace AI-estimated traffic mix with real GA4 data |

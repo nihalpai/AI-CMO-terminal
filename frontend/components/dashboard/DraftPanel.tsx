@@ -19,6 +19,7 @@ const AGENT_CONTENT_TYPE: Record<string, string> = {
   'Hacker News Agent': 'Hacker News Show HN post',
   'LinkedIn Agent': 'LinkedIn thought-leadership post',
   'UGC Videos Agent': 'short-form video script (60 seconds)',
+  'GEO Agent': 'llms.txt AI discoverability file',
 }
 
 const AGENT_PLATFORM: Record<string, string> = {
@@ -29,6 +30,7 @@ const AGENT_PLATFORM: Record<string, string> = {
   'Hacker News Agent': 'hackernews',
   'LinkedIn Agent': 'linkedin',
   'UGC Videos Agent': 'blog',
+  'GEO Agent': 'llmstxt',
 }
 
 export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: DraftPanelProps) {
@@ -75,6 +77,18 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function handleDownload() {
+    const blob = new Blob([draft], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'llms.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   if (!isOpen) return null
 
   return (
@@ -108,6 +122,14 @@ export function DraftPanel({ isOpen, onClose, agentName, itemText, jobId }: Draf
                 className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-md px-3 py-1.5 transition-colors"
               >
                 ↻ Regenerate
+              </button>
+            )}
+            {!isLoading && draft && platform === 'llmstxt' && (
+              <button
+                onClick={handleDownload}
+                className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-md px-3 py-1.5 transition-colors"
+              >
+                ↓ Download
               </button>
             )}
             <button

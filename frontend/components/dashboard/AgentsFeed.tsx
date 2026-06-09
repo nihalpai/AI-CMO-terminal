@@ -16,6 +16,13 @@ type AnalysisReport = {
     social: number
     paid: number
   }
+  geo_signals?: {
+    geo_score: number
+    ai_visibility: 'Strong' | 'Moderate' | 'Weak'
+    schema_gaps: string[]
+    freshness_issue: boolean
+    geo_recommendations: string[]
+  }
 }
 
 interface AgentsFeedProps {
@@ -79,6 +86,13 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
   const ugcItems = wso.length > 0
     ? [`Short-form video: visually explain this opportunity — ${wso[0].slice(0, 80)}...`]
     : ['Short-form explainer (60 sec): address the #1 pain point your competitors are ignoring']
+
+  // GEO Agent: geo recommendations from analysis, with fallback
+  const geoItems = report.geo_signals?.geo_recommendations?.slice(0, 3) ?? [
+    'Add FAQ schema markup to high-traffic pages to improve AI citation likelihood',
+    'Publish comparison pages targeting vendor lock-in and migration queries',
+    'Strengthen Organization schema with sameAs and logo fields',
+  ]
 
   return (
     <div className="h-full overflow-y-auto bg-slate-900">
@@ -154,6 +168,17 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
           statusText="1 video ready"
           items={ugcItems}
           jobId={jobId}
+        />
+
+        {/* 8. GEO Agent */}
+        <AgentCard
+          name="GEO Agent"
+          icon="geo"
+          statusText={`GEO score ${report.geo_signals?.geo_score ?? 0} · ${report.geo_signals?.ai_visibility ?? 'Moderate'} AI visibility`}
+          items={[]}
+          jobId={jobId}
+          inlineAction={{ label: 'Generate llms.txt →', itemText: 'Generate full llms.txt AI discoverability file' }}
+          description="Generates a deployment-ready llms.txt file for your website root, helping AI assistants like ChatGPT, Perplexity, and Claude accurately discover and cite your company."
         />
       </div>
     </div>

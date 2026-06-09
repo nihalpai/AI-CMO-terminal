@@ -40,12 +40,12 @@ Two pipelines run in parallel, switched by `USE_LYZR_STUDIO` env var:
 
 ### Active: Lyzr Studio Pipeline (`USE_LYZR_STUDIO=true`)
 
-9 agents orchestrated by Python (`lyzr_studio_pipeline.py`). Each agent is a separate Lyzr Studio agent called via the Lyzr Agent API (`lyzr-agent-api` Python client).
+10 agents orchestrated by Python (`lyzr_studio_pipeline.py`). Each agent is a separate Lyzr Studio agent called via raw `httpx` against the Lyzr Agent API.
 
 | # | Agent | Model | Purpose |
 |---|---|---|---|
 | 1 | **Company Classifier** | Claude Haiku | Classifies target company: industry, business model, persona, description |
-| 2 | **Competitor Finder** | Perplexity Sonar Small | Finds top 5 direct competitors using classifier output as context |
+| 2 | **Competitor Finder** | Perplexity Sonar Small | Finds top 5 direct competitors with name + URL using classifier output as context |
 | 3 | **Website Researcher** | Perplexity Sonar Small | Researches each competitor individually (positioning, pricing, community complaints) |
 | 4 | **Pain Points Synthesizer** | Claude Haiku | Consolidates all competitor complaints into 5 market pain point themes |
 | 5 | **SEO Analyzer** | Perplexity Sonar Small | Searches buyer intent queries, identifies keyword gaps and white space |
@@ -53,6 +53,7 @@ Two pipelines run in parallel, switched by `USE_LYZR_STUDIO` env var:
 | 7 | **Strategy Synthesizer** | Claude Haiku | Writes the final GTM strategy summary from all agent outputs |
 | 8 | **AI CMO Chat** | Claude Haiku | Conversational CMO powered by full report context + Lyzr Memory |
 | 9 | **Content Writer** | Claude Haiku | Writes platform-specific copy (Reddit, X, LinkedIn, HN, blog, email) on demand |
+| 10 | **LLMs.txt Generator** | Claude Haiku | Generates a deployment-ready `llms.txt` file to improve AI discoverability (GEO) |
 
 **Data flow (Studio):**
 1. User submits URL → `POST /api/v1/analyze` returns `job_id` instantly (202)
@@ -80,7 +81,7 @@ See `LYZR_INTEGRATION.md` for complete input/output specs for every agent.
 |-----|-------------|
 | **Company** | Company overview, competitor list, navCards |
 | **Analytics** | Traffic mix (search/direct/social/paid), white space opportunities, GEO score |
-| **Agents** | 7 agent cards (Reddit, SEO, X, Articles, HN, LinkedIn, UGC Video) + DraftPanel |
+| **Agents** | 8 agent cards (Reddit, SEO, X, Articles, HN, LinkedIn, UGC Video, GEO) + DraftPanel |
 | **Reports** | Full GTM report, hiring signals, content recommendations |
 
 Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
@@ -91,9 +92,9 @@ Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
 
 | Source | Status | Usage |
 |--------|--------|-------|
-| Lyzr Studio Agents | ✅ Active | 9-agent pipeline (competitor research, SEO, GEO, strategy) |
+| Lyzr Studio Agents | ✅ Active | 10-agent pipeline (competitor research, SEO, GEO, strategy, content, LLMs.txt) |
 | Perplexity Sonar Small | ✅ Active | Built-in search for Competitor Finder, Website Researcher, SEO Analyzer, GEO Scorer |
-| Claude Haiku | ✅ Active | Company Classifier, Pain Points Synthesizer, Strategy Synthesizer, CMO Chat, Content Writer |
+| Claude Haiku | ✅ Active | Company Classifier, Pain Points Synthesizer, Strategy Synthesizer, CMO Chat, Content Writer, LLMs.txt Generator |
 | Serper.dev | ✅ Active | ATS job board URLs + news signals for hiring signals |
 | ATS Job Boards (Greenhouse/Lever/Ashby) | ✅ Active (mock by default) | Hiring signals via `USE_MOCK_APIFY=false` |
 | Gemini 2.5 Flash Lite | ✅ Legacy | Original 3-agent pipeline (`USE_LYZR_STUDIO=false`) |
@@ -141,12 +142,13 @@ Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
 ## 9. Roadmap
 
 ### ✅ Completed: Sprint 7 — Lyzr Studio Integration
-`lyzr_studio_pipeline.py` and `cmo_chat_agent_studio.py` implemented. `USE_LYZR_STUDIO` toggle live in both `main.py` and `routers/agents.py`. All 13 env vars filled locally and pipeline tested end-to-end. Pending: add Render dashboard env vars + flip toggle in production.
+`lyzr_studio_pipeline.py` and `cmo_chat_agent_studio.py` implemented. `USE_LYZR_STUDIO` toggle live in both `main.py` and `routers/agents.py`. All env vars filled locally and pipeline tested end-to-end. Pending: add Render dashboard env vars + flip toggle in production.
 
-**Bug fixed:** Company Classifier URL-scoping rule added — agents now classify the specific product at the exact URL (e.g. `amazon.com` → ecommerce only, not AWS).
+### ✅ Completed: Sprint 8 — DraftPanel Platform Selector + UI Polish
+Content Writer agent wired to DraftPanel. Agent card "Draft →" buttons call `/api/v1/draft` with `platform` + `content_recommendation` → Content Writer returns publish-ready copy. `company_name` + `hiring_signals` now passed as context. Competitors stored as `{name, url}` objects and rendered as clickable links. Shared `text-utils.tsx` rendering utilities added. Full UI/UX pass across all 4 tabs.
 
-### Current: Sprint 8 — DraftPanel Platform Selector
-Wire the Content Writer agent to the DraftPanel. User selects platform (X, LinkedIn, Reddit, Blog, HN, Email), backend calls `LYZR_AGENT_CONTENT_WRITER` with that platform + stored analysis context. Returns plain text, publish-ready copy displayed in DraftPanel.
+### Current: Sprint 9 — GEO Agent Card + LLMs.txt Generator
+Adding an 8th agent card (GEO Agent) to the Agents tab, sourcing `geo_signals.geo_recommendations`. New LLMs.txt Generator agent (Agent 10) generates a deployment-ready `llms.txt` file for the user's company website — a Markdown file placed at `yourdomain.com/llms.txt` that helps AI assistants accurately cite the company, improving GEO score. Clicking "Draft →" on any GEO recommendation generates the full file.
 
 ### Future
 | Feature | Goal |
