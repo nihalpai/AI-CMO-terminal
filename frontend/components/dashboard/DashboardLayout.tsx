@@ -13,7 +13,7 @@ type TabId = 'company' | 'analytics' | 'agents' | 'reports'
 
 type AnalysisReport = {
   summary: string
-  competitors: string[]
+  competitors: Array<string | { name: string; url: string }>
   white_space_opportunities: string[]
   recommended_channels: string[]
   content_recommendations: string[]

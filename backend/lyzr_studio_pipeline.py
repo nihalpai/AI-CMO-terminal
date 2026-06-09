@@ -145,7 +145,7 @@ def _assemble_result(classifier, competitors, seo_result,
         "company_name": classifier.get("company_name", ""),
         "company_description": (classifier.get("description") or classifier.get("company_description", "")),
         "summary": strategy_result.get("summary", ""),
-        "competitors": [c["name"] for c in competitors],
+        "competitors": [{"name": c["name"], "url": c.get("url", "")} for c in competitors],
         "white_space_opportunities": seo_result.get("white_space_opportunities", []),
         "recommended_channels": seo_result.get("recommended_channels", []),
         "content_recommendations": seo_result.get("content_opportunities", []),  # key rename

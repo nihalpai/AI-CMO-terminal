@@ -9,7 +9,7 @@ import { cleanUrls, renderInline, renderBlocks } from '@/lib/text-utils'
 
 type AnalysisReport = {
   summary: string
-  competitors: string[]
+  competitors: Array<string | { name: string; url: string }>
   white_space_opportunities: string[]
   recommended_channels: string[]
   content_recommendations: string[]
@@ -66,12 +66,28 @@ export function ReportsTab({ report, companyDomain, onReset }: ReportsTabProps) 
             <h2 className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Competitors</h2>
             <div className="space-y-1.5">
               {(() => {
-                const uniqueCompetitors = [...new Set(report.competitors)]
+                type Competitor = string | { name: string; url: string }
+                const getName = (c: Competitor) => typeof c === 'string' ? c : c.name
+                const getUrl = (c: Competitor) => {
+                  if (typeof c === 'object' && c.url) {
+                    const url = c.url.trim()
+                    return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`
+                  }
+                  return `https://www.google.com/search?q=${encodeURIComponent(getName(c))}+official+site`
+                }
+                const uniqueCompetitors = [...new Map(report.competitors.map(c => [getName(c), c])).values()]
                 return uniqueCompetitors.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <a
+                    key={i}
+                    href={getUrl(c)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 group hover:bg-slate-800/50 rounded px-1 py-0.5 -mx-1 transition-colors"
+                  >
                     <span className="text-slate-600 text-xs font-mono w-4">{i + 1}.</span>
-                    <span className="text-slate-400 text-sm">{c}</span>
-                  </div>
+                    <span className="text-slate-400 text-sm group-hover:text-slate-200 transition-colors">{getName(c)}</span>
+                    <span className="text-slate-600 text-xs ml-1 opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+                  </a>
                 ))
               })()}
             </div>

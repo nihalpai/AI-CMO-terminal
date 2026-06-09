@@ -19,9 +19,24 @@ function CompanyLogo({ domain, size, fallback }: { domain: string; size: number;
   )
 }
 
+type Competitor = string | { name: string; url: string }
+
+function getCompetitorName(c: Competitor): string {
+  return typeof c === 'string' ? c : c.name
+}
+
+function getCompetitorUrl(c: Competitor): string {
+  if (typeof c === 'object' && c.url) {
+    const url = c.url.trim()
+    return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`
+  }
+  // Fallback: Google search for the company name (safe for any TLD)
+  return `https://www.google.com/search?q=${encodeURIComponent(getCompetitorName(c))}+official+site`
+}
+
 type AnalysisReport = {
   summary: string
-  competitors: string[]
+  competitors: Competitor[]
   white_space_opportunities: string[]
   recommended_channels: string[]
   content_recommendations: string[]
@@ -125,18 +140,24 @@ export function CompanyPanel({ report, companyDomain, onNavigate, onFocusChat }:
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
-            {[...new Set(report.competitors)].slice(0, 6).map((competitor, i) => {
-              const domain = competitor.toLowerCase().replace(/\s+/g, '') + '.com'
+            {[...new Map(report.competitors.map(c => [getCompetitorName(c), c])).values()].slice(0, 6).map((competitor, i) => {
+              const name = getCompetitorName(competitor)
+              const href = getCompetitorUrl(competitor)
+              const domain = href.replace(/^https?:\/\//, '').split('/')[0]
               return (
-                <div
+                <a
                   key={i}
-                  className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-800 cursor-pointer transition-colors"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-800 transition-colors group"
                 >
                   <div className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
                     <CompanyLogo domain={domain} size={16} fallback={<span className="text-xs">🛡️</span>} />
                   </div>
-                  <span className="text-slate-400 text-xs truncate">{competitor}</span>
-                </div>
+                  <span className="text-slate-400 text-xs truncate group-hover:text-slate-200 transition-colors">{name}</span>
+                  <span className="text-slate-600 text-xs ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0">↗</span>
+                </a>
               )
             })}
           </div>
