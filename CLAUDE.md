@@ -30,6 +30,7 @@ Both produce identical Supabase `result` schema. See `LYZR_INTEGRATION.md` for t
 ## 4. Architecture Overview
 ```
 Browser → Vercel (don-drapor.vercel.app)
+            ↓ proxy.ts (password gate — checks auth_session cookie)
             ↓ NEXT_PUBLIC_API_BASE_URL
           Render (don-drapor.onrender.com)
             ↓ env vars in Render dashboard
@@ -40,6 +41,24 @@ Browser → Vercel (don-drapor.vercel.app)
 ```
 
 **Local dev:** Frontend on port 3000, backend on port 8000. `NEXT_PUBLIC_API_BASE_URL` defaults to `http://localhost:8000` if not set.
+
+## 4a. Password Gate & Deep Links
+
+**Password gate** — a single shared password protects the entire frontend. No per-user accounts.
+- `frontend/proxy.ts` — intercepts every request, checks `auth_session` cookie against `SESSION_TOKEN` env var
+- `frontend/app/login/page.tsx` — password entry form, styled to match the app
+- `frontend/app/api/auth/login/route.ts` — server-side handler: checks `SHARED_PASSWORD`, sets `auth_session` cookie (httpOnly, 30-day expiry)
+- Cookie value = `SESSION_TOKEN` (a random hex string). Changing it instantly invalidates all sessions.
+- Env vars (Vercel only, not Render): `SHARED_PASSWORD`, `SESSION_TOKEN`
+
+**Shareable deep links** — after analysis completes, the browser URL encodes the full dashboard state:
+```
+/?job=<uuid>&tab=<company|analytics|agents|reports>&site=<domain>
+```
+- Visiting a shared link auto-loads the analysis from Supabase and opens the correct tab
+- If unauthenticated, middleware redirects to `/login?redirect=<original-url>` and returns there after login
+- Tab switches update `?tab=` in-place (no new history entry) via `window.history.replaceState`
+- `handleReset` clears URL back to bare `/`
 
 ## 5. Dashboard Tabs (All Complete)
 Default landing tab: **Company** (set in `DashboardLayout.tsx`).
@@ -98,11 +117,16 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 - **Sprint 6:** Production deployment — Vercel + Render, CORS from env var, frontend API base URL from env var
 - **Sprint 7:** Lyzr Studio 9-agent pipeline — `lyzr_studio_pipeline.py`, `cmo_chat_agent_studio.py`, `USE_LYZR_STUDIO` toggle. All env vars filled locally. Pending: Render dashboard env vars + production deploy.
 - **Sprint 8:** DraftPanel platform selector — `/api/v1/draft` endpoint, Content Writer agent wired per platform (reddit/twitter/linkedin/hackernews/blog/email), `company_name` + `hiring_signals` passed as context. Competitor URLs stored in result. UI UX polish across all 4 tabs.
+- **Sprint 10:** Password gate + shareable deep links — `proxy.ts` shared-password gate, `/login` page, `/api/auth/login` route handler, URL params (`?job=&tab=&site=`) written after analysis and synced on tab switch, deep-link auto-load on page mount. Frontend env vars: `SHARED_PASSWORD`, `SESSION_TOKEN` (Vercel only).
 
 ## 11. Outstanding Security Items (Do Before Going Public)
-These are not blocking for private testing but must be done before sharing the URL widely:
-- **Rate limiting on `/api/v1/chat` and `/api/v1/watchlist/run`** — currently unprotected, anyone can spam Gemini calls. Extract shared limiter to `backend/limiter.py` to avoid circular imports.
-- **Supabase Auth (`@supabase/ssr`)** — magic link email allowlist login + `middleware.ts` route protection. Do NOT use NextAuth/Auth.js — adding it on top of Supabase creates two auth systems competing for session ownership. Use Supabase's own auth package instead.
+
+**Already done (Sprint 10):**
+- ✅ **Password gate** — `proxy.ts` + shared password protects the entire frontend. Sufficient for private invites.
+
+**Still deferred — do not implement until explicitly requested:**
+- **Rate limiting on `/api/v1/chat` and `/api/v1/watchlist/run`** — currently unprotected, anyone who knows the backend URL can spam Gemini calls. Extract shared limiter to `backend/limiter.py` to avoid circular imports.
+- **Supabase Auth (`@supabase/ssr`)** — if per-user accounts are ever needed: magic link email allowlist login. Do NOT use NextAuth/Auth.js — it would create two auth systems competing with the existing `proxy.ts` session cookie. If Supabase Auth is added, remove the current password gate and replace `proxy.ts` entirely.
 - **Supabase RLS** — enable row level security on `analysis_jobs` and `watchlist` tables.
 - **Playwright smoke tests** — 3 golden-path tests: (1) home page loads, (2) submit URL → result renders, (3) dashboard elements visible. Run `npm init playwright@latest` in the frontend folder. Run tests against staging before every deploy.
 
@@ -110,7 +134,7 @@ These are not blocking for private testing but must be done before sharing the U
 Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
 ## 13. Next Steps
-**Sprints 1–8 are complete.** Remaining for Sprint 7 production: add all `LYZR_AGENT_*` env vars + `USE_LYZR_STUDIO=true` to the Render dashboard, then redeploy.
+**Sprints 1–8 and Sprint 10 are complete.** Remaining for Sprint 7 production: add all `LYZR_AGENT_*` env vars + `USE_LYZR_STUDIO=true` to the Render dashboard, then redeploy. Also add `SHARED_PASSWORD` + `SESSION_TOKEN` to Vercel dashboard for the password gate.
 
 **Sprint 9 — GEO Agent Card + LLMs.txt Generator:**
 - Add an 8th agent card (GEO Agent) to the Agents tab, sourcing `geo_signals.geo_recommendations` from the Supabase result

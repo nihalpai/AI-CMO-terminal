@@ -128,6 +128,28 @@ See `LYZR_INTEGRATION.md` for the complete implementation spec.
 
 ---
 
+## ✅ Sprint 10 — Password Gate + Shareable Deep Links (COMPLETE)
+
+**Goal:** Protect the app with a single shared password and make every dashboard state shareable via URL.
+
+| Task | File | Status |
+|---|---|---|
+| Next.js middleware — checks `auth_session` cookie on every request | `frontend/proxy.ts` | ✅ Done |
+| Login page — password form, styled to match app | `frontend/app/login/page.tsx` | ✅ Done |
+| Auth API route — validates password, sets httpOnly cookie (30 days) | `frontend/app/api/auth/login/route.ts` | ✅ Done |
+| URL params written after analysis completes (`?job=&tab=&site=`) | `frontend/app/page.tsx` | ✅ Done |
+| Deep-link loader — auto-fetches job from Supabase on page mount | `frontend/app/page.tsx` | ✅ Done |
+| Tab changes sync `?tab=` in URL via `replaceState` | `frontend/components/dashboard/DashboardLayout.tsx` | ✅ Done |
+| `initialTab` prop threads URL tab param into DashboardLayout | `frontend/components/dashboard/DashboardLayout.tsx` | ✅ Done |
+| Add `SHARED_PASSWORD` + `SESSION_TOKEN` to `frontend/.env.local` | `frontend/.env.local` | ✅ Done |
+| Add `SHARED_PASSWORD` + `SESSION_TOKEN` to Vercel dashboard | Vercel | ⬜ Pending |
+
+**Shareable URL format:** `/?job=<uuid>&tab=<company|analytics|agents|reports>&site=<domain>`
+
+**How it works end-to-end:** User shares URL → recipient hits `/login?redirect=<url>` → enters password → cookie set → redirected to exact tab with analysis auto-loaded from Supabase.
+
+---
+
 ## 🚧 Sprint 9 — GEO Agent Card + LLMs.txt Generator (CURRENT)
 
 **Goal:** Surface GEO recommendations in the Agents tab via a new GEO Agent card. Add an LLMs.txt Generator agent (Agent 10) that produces a deployment-ready `llms.txt` file for the user's company website — improving AI discoverability (GEO score).

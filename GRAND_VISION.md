@@ -130,9 +130,10 @@ Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
 | Rate limiting on `/api/v1/analyze` | ✅ Done — 10/minute via slowapi |
 | Frontend API URL from env var | ✅ Done |
 | Secrets in env vars | ✅ Done |
+| Password gate (`proxy.ts` + shared password cookie) | ✅ Done — sufficient for private invites |
 | Rate limiting on `/api/v1/chat` | ❌ Deferred — not blocking |
 | Rate limiting on `/api/v1/watchlist/run` | ❌ Deferred — not blocking |
-| User authentication | ❌ Deferred — not blocking |
+| Per-user authentication (Supabase Auth) | ❌ Deferred — not blocking |
 | Supabase Row Level Security | ❌ Deferred — not blocking |
 
 **Security hardening is intentionally deferred.** Do not implement until explicitly requested.
@@ -146,6 +147,9 @@ Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
 
 ### ✅ Completed: Sprint 8 — DraftPanel Platform Selector + UI Polish
 Content Writer agent wired to DraftPanel. Agent card "Draft →" buttons call `/api/v1/draft` with `platform` + `content_recommendation` → Content Writer returns publish-ready copy. `company_name` + `hiring_signals` now passed as context. Competitors stored as `{name, url}` objects and rendered as clickable links. Shared `text-utils.tsx` rendering utilities added. Full UI/UX pass across all 4 tabs.
+
+### ✅ Completed: Sprint 10 — Password Gate + Shareable Deep Links
+Entire frontend protected by a shared password via Next.js `proxy.ts` + httpOnly session cookie. Unauthenticated visitors are redirected to `/login?redirect=<original-url>` and land back at the correct page after logging in. After analysis completes the browser URL updates to `/?job=<uuid>&tab=<tabid>&site=<domain>` — shareable links auto-load the analysis from Supabase and open the correct tab. Tab switches keep `?tab=` in sync via `replaceState`. Frontend env vars: `SHARED_PASSWORD` + `SESSION_TOKEN` (Vercel only).
 
 ### Current: Sprint 9 — GEO Agent Card + LLMs.txt Generator
 Adding an 8th agent card (GEO Agent) to the Agents tab, sourcing `geo_signals.geo_recommendations`. New LLMs.txt Generator agent (Agent 10) generates a deployment-ready `llms.txt` file for the user's company website — a Markdown file placed at `yourdomain.com/llms.txt` that helps AI assistants accurately cite the company, improving GEO score. Clicking "Draft →" on any GEO recommendation generates the full file.
