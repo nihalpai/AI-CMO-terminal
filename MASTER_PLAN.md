@@ -223,13 +223,13 @@ See `lyzr_agents.md` Agent 10 for the full LLMs.txt Generator agent spec (role, 
 | Fill `LYZR_AGENT_VIDEO_STRATEGIST` in `.env` | `backend/.env` | ✅ Done |
 | Verify avatar model — `soul_v2` does NOT exist; correct model is `marketing_studio_video` | `backend/routers/video.py` | ✅ Done |
 | Fix `_generate_avatar_video()` → `marketing_studio_video`, underscore flags, `--avatars` JSON format | `backend/routers/video.py` | ✅ Done |
-| Set `HIGGSFIELD_AVATAR_ID` preset (Liam: `734451fd-...`) | `backend/.env` | ⚠️ Superseded (11b) — preset avatars fail; gated off |
-| Wire `higgsfield webproducts fetch` for real product screenshots (avatar + b-roll) | `backend/routers/video.py` | ⚠️ Superseded (11b) — `--web_product_ids` fails; gated off |
+| Set `HIGGSFIELD_AVATAR_ID` preset (Liam: `734451fd-...`) | `backend/.env` | ⚠️ Superseded (11b) — `--avatars` gated off as precaution (unproven cause; see 11b table) |
+| Wire `higgsfield webproducts fetch` for real product screenshots (avatar + b-roll) | `backend/routers/video.py` | ⚠️ Superseded (11b) — `--web_product_ids` gated off as precaution (unproven; see 11b table) |
 | Resume-on-reopen: `checkExistingJob()` + `GET /api/v1/video/by-analysis/{id}` | `VideoPanel.tsx`, `video.py` | ✅ Done |
 | Cap avatar duration at 15s; block backdrop close during generation | `video.py`, `VideoPanel.tsx` | ⚠️ Reworked (11b) — old cap used word-count and inflated to 17-20s; now sends designed 15s |
 | Local end-to-end test: Phase A draft → Phase B generate → video renders | local | ✅ Done (11b) — 15s talking-head renders end-to-end |
-| Solve Render deployment: install + auth Higgsfield CLI on Render server | Render / `render-build.sh` | ⬜ Pending — see note |
-| Add `LYZR_AGENT_VIDEO_STRATEGIST` + all `LYZR_AGENT_*` + `USE_LYZR_STUDIO=true` + `VIDEO_MAX_DURATION=15` to Render | Render dashboard | ⬜ Pending |
+| Solve Render deployment: render the CLI somewhere persistent | queue + remote worker | ✅ Done (11c) — Render enqueues, Oracle VM worker renders. Do NOT try to run the CLI on Render. |
+| Add `LYZR_AGENT_VIDEO_STRATEGIST` + all `LYZR_AGENT_*` + `USE_LYZR_STUDIO=true` + `VIDEO_MAX_DURATION=15` + `USE_VIDEO_WORKER=true` + `CORS_ORIGINS` to Render | Render dashboard | ✅ Done (set; see CLAUDE.md §13 for the full list) |
 
 ### Sprint 11b — Reliability fixes (all ✅ Done, `backend/routers/video.py`)
 
@@ -238,16 +238,28 @@ The original pipeline failed on nearly every real run. Causes found & fixed (ful
 
 | Fix | Detail |
 |---|---|
-| **Duration source** (the killer) | Backend computed duration from word count @130 WPM → inflated the agent's 15s scripts to 17–20s; `marketing_studio_video` fails at ≥17s. Now `_planned_duration()` uses `target_duration_seconds` (=15), clamped by `VIDEO_MAX_DURATION` (default 15). Proven: same script fails at 17s, renders at 15s. |
-| **`--avatars` gated off** | Preset avatars (Liam/Jayden) fail server-side. `HIGGSFIELD_USE_AVATARS` (default off). |
-| **`--setting_id` gated off** | Triggers a face-locked template that fails. `HIGGSFIELD_USE_SETTING` (default off). |
-| **`--web_product_ids` gated off** | Product screenshot used as a face reference → fails. `HIGGSFIELD_USE_WEB_PRODUCTS` (default off). |
+| **Duration source** (the PROVEN cause) | Backend computed duration from word count @130 WPM → inflated the agent's 15s scripts to 17–20s; `marketing_studio_video` fails at ≥17s. Now `_planned_duration()` uses `target_duration_seconds` (=15), clamped by `VIDEO_MAX_DURATION` (default 15). Proven: same script fails at 17s, renders at 15s & 8s. |
+| **`--avatars` / `--setting_id` / `--web_product_ids` gated off** | ⚠️ PRECAUTION, **NOT proven causes.** Every failing job with these also had duration ≥17 (a bare 17s call failed too), so duration alone explains all observed failures; none was isolated at 15s. Gated via `HIGGSFIELD_USE_AVATARS`/`_SETTING`/`_WEB_PRODUCTS` (default off). May work at 15s — re-test before trusting they're broken. See `video_strategist_agent.md` §3. |
 | **Composition off** | FFmpeg split-screen + Supabase upload disabled (`VIDEO_COMPOSE`, default off) — 50 MB bucket limit. Output = Higgsfield CDN talking-head URL. |
 | **Retry + logging** | `HIGGSFIELD_MAX_ATTEMPTS` (default 2, transient safety net); `error_text` records exact CLI cmd + flags summary; standalone `backend/scripts/higgsfield_probe.py`. |
 
+### Sprint 11c — Production worker (✅ Done)
+
+Higgsfield's CLI is OAuth-based (no static API key) and can't live on Render's ephemeral box, so
+rendering is decoupled from the web server:
+- **Render web** with `USE_VIDEO_WORKER=true` → `/api/v1/video/generate` only inserts a `pending`
+  `video_jobs` row (no inline render). `_create_video_job` stores the full request in a new
+  `request_payload` jsonb column (`ALTER TABLE video_jobs ADD COLUMN request_payload jsonb;`).
+- **Worker** `backend/scripts/video_worker.py` runs 24/7 on a free **Oracle Always-Free VM** (systemd
+  `dondrapor-videoworker`), polls `video_jobs`, claims, and renders via `run_video_pipeline`. Setup:
+  `backend/scripts/WORKER_SETUP.md`. Full architecture + gotchas: `CLAUDE.md` Sprint 11c.
+- **Gotchas:** `video_jobs.status` has a CHECK constraint (only pipeline statuses) — claim with
+  `generating_avatar`, not an invented value. Never run two renderers at once (race). The VM holds
+  the Supabase service-role key → key-only SSH.
+
 **Two-phase UX:**
 - **Phase A** — `POST /api/v1/draft` with `platform: "ugcvideo_script"` → Video Strategist agent → 15s script + shot plan shown in VideoPanel (~5-10s)
-- **Phase B** — `POST /api/v1/video/generate` → CLI subprocess: `marketing_studio_video` talking-head at `--duration 15` → async polling → video player (~5 min). (Product b-roll/composition is gated off — see 11b.)
+- **Phase B** — `POST /api/v1/video/generate` → enqueues a `video_jobs` row → the VM worker renders `marketing_studio_video` at `--duration 15` → async polling → video player (~5 min). (Product b-roll/composition is gated off — see 11b.)
 
 **Company type routing:** `saas`, `ecommerce_physical`, `consumer_product`, `b2b_service`, `marketplace` → image-to-video (Serper-scraped screenshots) or text-to-video (b2b_service)
 

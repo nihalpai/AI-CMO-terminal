@@ -1,0 +1,28 @@
+# systemd unit for the Don Drapor video render worker (runs on the Oracle Always Free VM).
+# Install on the VM:
+#   sudo cp ~/don-drapor/backend/scripts/dondrapor-videoworker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dondrapor-videoworker
+# Logs:   journalctl -u dondrapor-videoworker -f
+# Restart after a code/.env change:  sudo systemctl restart dondrapor-videoworker
+#
+# Adjust User / paths below if your VM user isn't "ubuntu" (Oracle Linux uses "opc").
+[Unit]
+Description=Don Drapor video render worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/don-drapor/backend
+ExecStart=/home/ubuntu/don-drapor/backend/.venv/bin/python -m scripts.video_worker
+Restart=always
+RestartSec=10
+# HOME is required so the higgsfield CLI finds ~/.config/higgsfield/credentials.json.
+Environment=HOME=/home/ubuntu
+# PATH must include where the `higgsfield` binary/symlink lives.
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

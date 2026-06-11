@@ -39,7 +39,8 @@ this before changing this agent, its schema, or `backend/routers/video.py`.
 ### 1. Total video duration MUST stay ≤ 15 seconds — this is the #1 cause of failure
 - **Proven:** the *identical* 35-word script that failed 3× at duration **17s** completed cleanly at
   **8s** and at **15s**. Durations of **17–20s fail deterministically** (not flaky — they fail every
-  time). The reliable render ceiling is **~15–16s**; only **15s** is production-confirmed.
+  time). Proven-good: 8 and 15. Proven-bad: 17 and 20. **16 was never tested** (the cliff sits
+  somewhere in 16–17). We render at **15** because that's the highest value actually confirmed to work.
 - Therefore `target_duration_seconds` is **hard-pinned to 15** (schema `minimum: 15, maximum: 15`).
   Do not raise it. The backend trusts this value and sends `--duration 15` to Higgsfield.
 - **Shots must SUM to ~15s**, not 15s each. The per-shot `maximum: 15` is just an upper bound on a
@@ -55,18 +56,25 @@ this before changing this agent, its schema, or `backend/routers/video.py`.
   designed 15s), but a bloated script still risks rushed/garbled audio. **Count your words. Stay ≤40.**
 - The old example in this file was a 64-word script — that alone would have failed. Keep examples ≤40.
 
-### 3. Backend flags that BROKE generation (now gated OFF by default in `video.py`)
-These are enforced in `backend/routers/video.py`, not by this agent, but documented here because they
-were all separate causes of the same opaque `status: failed`:
+### 3. Three flags gated OFF — PRECAUTIONARY, **not** proven causes (read this carefully)
+`--avatars`, `--setting_id`, and `--web_product_ids` are gated off by default in
+`backend/routers/video.py`. **Honest evidence note — do not blindly trust that these "cause failure":**
+every failing job that contained them ALSO had duration ≥17, and a *bare* call at duration 17 failed
+too, while every success (8s, 15s) was bare. **So duration ≥17 alone explains every failure we actually
+observed.** None of these three flags was ever tested in isolation at a safe 15s. They were gated off
+*before* duration was isolated, based on correlation + a prior chat's claims — **not** because any was
+proven guilty. If you want any of these features, **re-test it at duration 15 first; it may work now
+that the duration bug is fixed.**
 
-| Flag / behavior | Why it failed | Env gate (default off) |
+| Flag | Evidence level (why it was gated) | Env gate (default off) |
 |---|---|---|
-| `--avatars` (preset avatar id) | Preset avatars fail server-side (tested Liam + Jayden). Higgsfield auto-selects a creator if omitted. | `HIGGSFIELD_USE_AVATARS` |
-| `--setting_id` (e.g. Office) | Switches the server-side enhancer to a face-locked multi-shot template that fails. | `HIGGSFIELD_USE_SETTING` |
-| `--web_product_ids` (scraped screenshot) | The product screenshot gets used as a *character/face* reference ("match face exactly") → fails. | `HIGGSFIELD_USE_WEB_PRODUCTS` |
+| `--avatars` (preset id) | A prior chat reported Liam/Jayden failing; **not re-verified here**, durations unknown. Higgsfield auto-selects a creator if omitted. | `HIGGSFIELD_USE_AVATARS` |
+| `--setting_id` (e.g. Office) | **Correlation only:** failing jobs had `setting:Office` + a face-locked enhanced_prompt — but they were also ≥17s. Never isolated. | `HIGGSFIELD_USE_SETTING` |
+| `--web_product_ids` (scraped screenshot) | **Inference only:** the screenshot showed up as an image reference in the prompt — but again confounded with ≥17s duration. Never isolated. | `HIGGSFIELD_USE_WEB_PRODUCTS` |
 
-With all three off, the call is bare (`--prompt --duration --aspect_ratio 9:16 --mode ugc
---generate_audio true`), which is the only configuration proven to render reliably.
+The bare call (`--prompt --duration --aspect_ratio 9:16 --mode ugc --generate_audio true`) at **15s**
+is the only configuration we have *proven* renders — that's why it's the default, not because the
+flags are proven broken. A future debugger should treat **duration as the primary suspect**, not these.
 
 ### 4. Other hard facts
 - **No multi-shot stitching via CLI.** `multi_shots`/`multi_prompt` are server-side only and not CLI
@@ -87,6 +95,13 @@ pipeline's exact CLI args. Use it to isolate "pipeline bug vs Higgsfield" and to
 - `python backend/scripts/higgsfield_probe.py --cost-only --duration 15` — FREE, validates params.
 - `python backend/scripts/higgsfield_probe.py --duration 15` — one real render (~75 credits, ~5 min).
 - `python backend/scripts/higgsfield_probe.py --sweep 8,15,16` — map the ceiling.
+
+### 6. Where rendering actually happens (production)
+The CLI render does NOT run on Render (its OAuth auth can't survive Render's ephemeral box). In prod
+the web server only ENQUEUES a `video_jobs` row (`USE_VIDEO_WORKER=true`); a worker
+(`backend/scripts/video_worker.py`) on a free Oracle VM polls that table and runs the render where the
+CLI is authenticated. Full architecture, env vars, and gotchas (status CHECK constraint, no double
+renderers, re-auth maintenance): see `CLAUDE.md` Sprint 11c and `backend/scripts/WORKER_SETUP.md`.
 
 ---
 
@@ -230,7 +245,7 @@ Assembled in `routers/agents.py` when `platform == "ugcvideo_script"`:
 
 **Output:** Raw JSON string matching `VideoStrategistSchema`. Returned as `{"reply": "<json_string>"}` from `/api/v1/draft`. `VideoPanel.tsx` parses with `JSON.parse(data.reply)`.
 
-**Company URL:** The backend looks up `analysis_jobs.url` using `job_id` at generation time and can fetch real product screenshots via `higgsfield marketing-studio webproducts fetch` (with `image_search_query` as a Serper fallback). **However, passing those screenshots to the avatar video via `--web_product_ids` is currently DISABLED** (gated behind `HIGGSFIELD_USE_WEB_PRODUCTS`, default off) because it made the avatar render fail — see "Hard Constraints" §3. The screenshots were only ever consumed by the FFmpeg composition, which is also off (`VIDEO_COMPOSE`, default off). So today the strategist's `broll_prompt` / `image_search_query` are produced but not used in the rendered output; the final video is the bare talking-head from Higgsfield's CDN.
+**Company URL:** The backend looks up `analysis_jobs.url` using `job_id` at generation time and can fetch real product screenshots via `higgsfield marketing-studio webproducts fetch` (with `image_search_query` as a Serper fallback). **However, passing those screenshots to the avatar video via `--web_product_ids` is currently DISABLED** (gated behind `HIGGSFIELD_USE_WEB_PRODUCTS`, default off) — gated as a precaution during the duration debugging, **not a proven cause** (see "Hard Constraints" §3). The screenshots were only ever consumed by the FFmpeg composition, which is also off (`VIDEO_COMPOSE`, default off). So today the strategist's `broll_prompt` / `image_search_query` are produced but not used in the rendered output; the final video is the bare talking-head from Higgsfield's CDN.
 
 ---
 

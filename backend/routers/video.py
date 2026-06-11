@@ -59,6 +59,9 @@ class VideoGenerateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _create_video_job(video_job_id: str, analysis_job_id: str, payload: VideoGenerateRequest) -> None:
+    # Store the FULL request payload so a separate worker (backend/scripts/video_worker.py) can
+    # rebuild it and render later. The individual columns below are kept for convenience/back-compat.
+    request_payload = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
     _supabase.table("video_jobs").insert({
         "id": video_job_id,
         "analysis_job_id": analysis_job_id,
@@ -67,6 +70,7 @@ def _create_video_job(video_job_id: str, analysis_job_id: str, payload: VideoGen
         "company_type": payload.company_type,
         "hook_type": payload.hook_type,
         "shots": payload.shots,
+        "request_payload": request_payload,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }).execute()
@@ -421,17 +425,24 @@ def run_video_pipeline(video_job_id: str, payload: VideoGenerateRequest) -> None
     try:
         duration = _planned_duration(payload)
 
-        # Scrape company website for product screenshots
-        company_url = _get_company_url(payload.job_id)
-        web_product_id, screenshot_urls = _fetch_web_product(company_url) if company_url else ("", [])
-
-        # Serper fallback if webproducts returned nothing
-        serper_paths: list[str] = []
-        if not screenshot_urls:
-            try:
-                serper_paths = [_search_and_download_image(payload.image_search_query)]
-            except Exception:
-                pass
+        # Product screenshots are ONLY consumed by the FFmpeg composition (VIDEO_COMPOSE) or the
+        # --web_product_ids path (HIGGSFIELD_USE_WEB_PRODUCTS) — both gated off by default. When
+        # neither is enabled, scraping the company site (a ~1-2 min Higgsfield webproducts call +
+        # Serper) is wasted work AND a confusing silent warm-up before the render starts. Skip it so
+        # the render (and credit usage) begins within seconds of claiming the job.
+        web_product_id, screenshot_urls, serper_paths = "", [], []  # type: ignore[var-annotated]
+        want_products = (
+            os.getenv("VIDEO_COMPOSE", "false").lower() == "true"
+            or os.getenv("HIGGSFIELD_USE_WEB_PRODUCTS", "false").lower() == "true"
+        )
+        if want_products:
+            company_url = _get_company_url(payload.job_id)
+            web_product_id, screenshot_urls = _fetch_web_product(company_url) if company_url else ("", [])
+            if not screenshot_urls:  # Serper fallback if webproducts returned nothing
+                try:
+                    serper_paths = [_search_and_download_image(payload.image_search_query)]
+                except Exception:
+                    pass
 
         # Generate avatar talking-head video
         _update_status(video_job_id, "generating_avatar")
@@ -501,10 +512,18 @@ async def generate_video(
     payload: VideoGenerateRequest,
     background_tasks: BackgroundTasks,
 ) -> JSONResponse:
-    """Phase B — trigger async video generation. Returns video_job_id for polling."""
+    """Phase B — enqueue async video generation. Returns video_job_id for polling.
+
+    USE_VIDEO_WORKER=true (production/Render): only enqueue a 'pending' video_jobs row; a separate
+    worker (backend/scripts/video_worker.py) running where the Higgsfield CLI is authenticated picks
+    it up and renders. The web host (Render) can't run the CLI (ephemeral FS + rotating OAuth), so it
+    must NOT render inline there.
+    USE_VIDEO_WORKER unset/false (local default): render inline in this process — handy for local dev.
+    """
     video_job_id = str(uuid.uuid4())
     await asyncio.to_thread(_create_video_job, video_job_id, payload.job_id, payload)
-    background_tasks.add_task(asyncio.to_thread, run_video_pipeline, video_job_id, payload)
+    if os.getenv("USE_VIDEO_WORKER", "false").lower() != "true":
+        background_tasks.add_task(asyncio.to_thread, run_video_pipeline, video_job_id, payload)
     return JSONResponse({"video_job_id": video_job_id, "status": "pending"}, status_code=202)
 
 

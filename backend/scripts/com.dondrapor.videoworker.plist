@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd agent to keep the video render worker running (auto-start at login, restart on crash).
+
+  Install:
+    cp backend/scripts/com.dondrapor.videoworker.plist ~/Library/LaunchAgents/
+    launchctl load  ~/Library/LaunchAgents/com.dondrapor.videoworker.plist
+  Stop / uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.dondrapor.videoworker.plist
+  Logs:
+    tail -f /tmp/dondrapor_videoworker.log /tmp/dondrapor_videoworker.err
+
+  NOTE: the PATH below must include the dir holding the `higgsfield` CLI
+  (here: the nvm node bin). If you change node versions, update it.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dondrapor.videoworker</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nihalpai/Documents/Lyzr/don-drapor/backend</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nihalpai/Documents/Lyzr/don-drapor/backend/.venv/bin/python</string>
+        <string>-m</string>
+        <string>scripts.video_worker</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/nihalpai/.nvm/versions/node/v20.20.2/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/dondrapor_videoworker.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dondrapor_videoworker.err</string>
+</dict>
+</plist>
