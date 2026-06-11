@@ -157,6 +157,27 @@ async def draft(payload: DraftRequest) -> JSONResponse:
                 agent_input,
                 payload.job_id,
             )
+        elif payload.platform == "ugcvideo_script":
+            # Phase A: Video Strategist agent — returns raw JSON string for VideoPanel to parse
+            agent_input = {
+                "company_name": result.get("company_name", ""),
+                "company_description": result.get("company_description", ""),
+                "industry": result.get("industry", ""),
+                "business_model": result.get("business_model", ""),
+                "persona": result.get("persona", ""),
+                "summary": result.get("summary", ""),
+                "white_space_opportunities": result.get("white_space_opportunities", [])[:3],
+                "competitors": [
+                    c["name"] if isinstance(c, dict) else c
+                    for c in result.get("competitors", [])[:3]
+                ],
+            }
+            reply = await asyncio.to_thread(
+                call_agent_text,
+                os.getenv("LYZR_AGENT_VIDEO_STRATEGIST"),
+                agent_input,
+                payload.job_id,
+            )
         else:
             agent_input = {
                 "platform": payload.platform,

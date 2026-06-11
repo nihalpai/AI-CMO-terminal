@@ -655,7 +655,7 @@ Sprint 7 local testing complete. Pending: Render env vars + production deploy.
 5. ✅ **Toggle switch test** — original pipeline still works after toggling back.
 6. ✅ **Draft test** — clicking "Draft →" on any agent card item opens DraftPanel and returns platform-specific copy.
 7. ⬜ **Production deploy** — add all `LYZR_AGENT_*` vars to Render dashboard, set `USE_LYZR_STUDIO=true`, redeploy.
-8. ⬜ **LLMs.txt test** — clicking "Draft →" on any GEO Agent recommendation returns a valid `llms.txt` Markdown file starting with `# CompanyName`.
+8. ✅ **LLMs.txt test** — clicking "Draft →" on any GEO Agent recommendation returns a valid `llms.txt` Markdown file starting with `# CompanyName`.
 
 **Post-deploy check:** Hit `https://don-drapor.onrender.com/health` and run one live analysis to confirm Studio pipeline works on Render's Python environment.
 

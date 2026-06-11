@@ -54,6 +54,7 @@ Two pipelines run in parallel, switched by `USE_LYZR_STUDIO` env var:
 | 8 | **AI CMO Chat** | Claude Haiku | Conversational CMO powered by full report context + Lyzr Memory |
 | 9 | **Content Writer** | Claude Haiku | Writes platform-specific copy (Reddit, X, LinkedIn, HN, blog, email) on demand |
 | 10 | **LLMs.txt Generator** | Claude Haiku | Generates a deployment-ready `llms.txt` file to improve AI discoverability (GEO) |
+| 11 | **Video Strategist** | Claude Haiku | Classifies company type, selects 2026 retention hook, writes script + shot plan for short-form ad (Phase A) |
 
 **Data flow (Studio):**
 1. User submits URL → `POST /api/v1/analyze` returns `job_id` instantly (202)
@@ -81,7 +82,7 @@ See `LYZR_INTEGRATION.md` for complete input/output specs for every agent.
 |-----|-------------|
 | **Company** | Company overview, competitor list, navCards |
 | **Analytics** | Traffic mix (search/direct/social/paid), white space opportunities, GEO score |
-| **Agents** | 8 agent cards (Reddit, SEO, X, Articles, HN, LinkedIn, UGC Video, GEO) + DraftPanel |
+| **Agents** | 8 agent cards (Reddit, SEO, X, Articles, HN, LinkedIn, UGC Video, GEO) + DraftPanel + VideoPanel (UGC Video) |
 | **Reports** | Full GTM report, hiring signals, content recommendations |
 
 Fixed sidebar: AI CMO Chat (`AICMOChat.tsx`) — always visible at 340px
@@ -151,8 +152,16 @@ Content Writer agent wired to DraftPanel. Agent card "Draft →" buttons call `/
 ### ✅ Completed: Sprint 10 — Password Gate + Shareable Deep Links
 Entire frontend protected by a shared password via Next.js `proxy.ts` + httpOnly session cookie. Unauthenticated visitors are redirected to `/login?redirect=<original-url>` and land back at the correct page after logging in. After analysis completes the browser URL updates to `/?job=<uuid>&tab=<tabid>&site=<domain>` — shareable links auto-load the analysis from Supabase and open the correct tab. Tab switches keep `?tab=` in sync via `replaceState`. Frontend env vars: `SHARED_PASSWORD` + `SESSION_TOKEN` (Vercel only).
 
-### Current: Sprint 9 — GEO Agent Card + LLMs.txt Generator
-Adding an 8th agent card (GEO Agent) to the Agents tab, sourcing `geo_signals.geo_recommendations`. New LLMs.txt Generator agent (Agent 10) generates a deployment-ready `llms.txt` file for the user's company website — a Markdown file placed at `yourdomain.com/llms.txt` that helps AI assistants accurately cite the company, improving GEO score. Clicking "Draft →" on any GEO recommendation generates the full file.
+### ✅ Completed: Sprint 9 — GEO Agent Card + LLMs.txt Generator
+GEO Agent card live in Agents tab. LLMs.txt Generator (Agent 10) created in Lyzr Studio and generates deployment-ready `llms.txt` files via GEO Agent card — fully working locally. Pending: add `LYZR_AGENT_LLMSTXT_GENERATOR` to Render env vars at production deploy time.
+
+### ✅ Sprint 11 — UGC Video Generation Pipeline (working locally)
+AI-driven short-form video. Video Strategist agent (Agent 11) classifies company type and writes a 2026-retention-optimised **15-second** script + shot plan (Phase A). Higgsfield CLI (subprocess mode — OAuth tokens auto-refresh, no static API key) generates a `marketing_studio_video` talking-head (Phase B, ~5 min). VideoPanel shows progress + player. **A 15s talking-head renders reliably end-to-end.**
+
+> **Sprint 11b — reliability fixes (done).** The first build failed on nearly every run. Root cause: the backend sent a word-count-inflated duration (17–20s) instead of the agent's designed 15s, and Higgsfield's `marketing_studio_video` fails server-side at ≥17s. Fixed by sending the designed 15s (`_planned_duration`, `VIDEO_MAX_DURATION=15`). Also gated off three other failure modes — preset `--avatars`, `--setting_id`, `--web_product_ids` — and disabled FFmpeg composition/Supabase upload (50 MB bucket limit), so the output is the bare Higgsfield-CDN talking-head (no b-roll overlay yet). Avatar model is `marketing_studio_video` (NOT "Soul V2"); b-roll/Kling is part of the deferred composition work. Full failure-mode docs: `video_strategist_agent.md` → "Hard Constraints & Why Generation Breaks".
+
+### 🔜 Sprint 12 — Video Composition + Virality Scoring
+Re-enable product b-roll by composing **short** clips (≤15s each, to stay under the render cliff) into one ad — needs a video-hosting target since composed files exceed the 50 MB Supabase bucket. Tighten agent scripts so 15s isn't rushed. Wire Higgsfield brain-activity virality scoring. Implement local worker pattern for Render CLI auth (worker polls `video_jobs` for pending jobs, runs CLI locally, updates status).
 
 ### Future
 | Feature | Goal |

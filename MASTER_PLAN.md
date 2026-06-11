@@ -150,7 +150,7 @@ See `LYZR_INTEGRATION.md` for the complete implementation spec.
 
 ---
 
-## 🚧 Sprint 9 — GEO Agent Card + LLMs.txt Generator (CURRENT)
+## ✅ Sprint 9 — GEO Agent Card + LLMs.txt Generator (COMPLETE)
 
 **Goal:** Surface GEO recommendations in the Agents tab via a new GEO Agent card. Add an LLMs.txt Generator agent (Agent 10) that produces a deployment-ready `llms.txt` file for the user's company website — improving AI discoverability (GEO score).
 
@@ -161,16 +161,16 @@ A Markdown file placed at `yourdomain.com/llms.txt` (spec: llmstxt.org, created 
 
 | Task | File | Status |
 |---|---|---|
-| Create LLMs.txt Generator agent in Lyzr Studio | Lyzr Studio | ⬜ |
-| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to `backend/.env` | `backend/.env` | ⬜ |
-| Add `LLMSTXT_GENERATOR_ID` env var to `lyzr_studio_pipeline.py` | `backend/lyzr_studio_pipeline.py` | ⬜ |
-| Add `"llmstxt"` platform branch to `/api/v1/draft` endpoint | `backend/routers/agents.py` | ⬜ |
-| Fetch `url` alongside `result` from Supabase in `draft()` | `backend/routers/agents.py` | ⬜ |
-| Add GEO Agent card to `_map_report_to_agents()` | `backend/routers/agents.py` | ⬜ |
-| Add `geo` icon to `AgentCard.tsx` icon map | `frontend/components/dashboard/AgentCard.tsx` | ⬜ |
-| Add `AGENT_PLATFORM['GEO Agent'] = 'llmstxt'` to DraftPanel maps | `frontend/components/dashboard/DraftPanel.tsx` | ⬜ |
-| Add GEO Agent card to AgentsFeed | `frontend/components/dashboard/AgentsFeed.tsx` | ⬜ |
-| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to Render dashboard env vars | Render | ⬜ |
+| Create LLMs.txt Generator agent in Lyzr Studio | Lyzr Studio | ✅ Done |
+| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to `backend/.env` | `backend/.env` | ✅ Done |
+| Add `LLMSTXT_GENERATOR_ID` env var to `lyzr_studio_pipeline.py` | `backend/lyzr_studio_pipeline.py` | ✅ Done |
+| Add `"llmstxt"` platform branch to `/api/v1/draft` endpoint | `backend/routers/agents.py` | ✅ Done |
+| Fetch `url` alongside `result` from Supabase in `draft()` | `backend/routers/agents.py` | ✅ Done |
+| Add GEO Agent card to `_map_report_to_agents()` | `backend/routers/agents.py` | ✅ Done |
+| Add `geo` icon to `AgentCard.tsx` icon map | `frontend/components/dashboard/AgentCard.tsx` | ✅ Done |
+| Add `AGENT_PLATFORM['GEO Agent'] = 'llmstxt'` to DraftPanel maps | `frontend/components/dashboard/DraftPanel.tsx` | ✅ Done |
+| Add GEO Agent card to AgentsFeed | `frontend/components/dashboard/AgentsFeed.tsx` | ✅ Done |
+| Add `LYZR_AGENT_LLMSTXT_GENERATOR` to Render dashboard env vars | Render | ⬜ Pending (with production deploy) |
 
 ### Agent Input (sent from `/api/v1/draft` when `platform == "llmstxt"`)
 ```python
@@ -198,6 +198,64 @@ agents.append({
 ```
 
 See `lyzr_agents.md` Agent 10 for the full LLMs.txt Generator agent spec (role, goal, instructions, structured output).
+
+---
+
+## 🚧 Sprint 11 — UGC Video Generation Pipeline (CURRENT)
+
+**Goal:** Replace the UGC Videos Agent script stub with a full AI-driven short-form video production pipeline powered by Higgsfield CLI.
+
+**Auth architecture decision (Sprint 11b):** Higgsfield uses rotating OAuth tokens in `~/.config/higgsfield/credentials.json`. These tokens expire and auto-refresh via the CLI — a static API key would break in days. `backend/routers/video.py` therefore invokes the Higgsfield CLI as a `subprocess.run()` call instead of making HTTP API calls. No `HIGGSFIELD_API_KEY` env var is needed or used.
+
+| Task | File | Status |
+|---|---|---|
+| Add `industry`, `business_model`, `persona` to `_assemble_result()` | `backend/lyzr_studio_pipeline.py` | ✅ Done |
+| Add `ugcvideo_script` platform branch to `/api/v1/draft` | `backend/routers/agents.py` | ✅ Done |
+| Create `backend/routers/video.py` — CLI subprocess mode, Phase B endpoints | `backend/routers/video.py` | ✅ Done |
+| Wire video router in `main.py` | `backend/main.py` | ✅ Done |
+| Switch to CLI subprocess auth (remove API key dependency) | `backend/.env`, `backend/routers/video.py` | ✅ Done |
+| Create `frontend/components/dashboard/VideoPanel.tsx` | `frontend/components/dashboard/VideoPanel.tsx` | ✅ Done |
+| Add `videoAction` prop to `AgentCard.tsx` + `VideoPanel` integration | `frontend/components/dashboard/AgentCard.tsx` | ✅ Done |
+| Update UGC Videos card to use `videoAction` | `frontend/components/dashboard/AgentsFeed.tsx` | ✅ Done |
+| Create `video_strategist_agent.md` agent spec | `video_strategist_agent.md` | ✅ Done |
+| Create `video_jobs` table in Supabase | Supabase SQL editor | ✅ Done |
+| Create Video Strategist agent in Lyzr Studio | Lyzr Studio | ✅ Done |
+| Fill `LYZR_AGENT_VIDEO_STRATEGIST` in `.env` | `backend/.env` | ✅ Done |
+| Verify avatar model — `soul_v2` does NOT exist; correct model is `marketing_studio_video` | `backend/routers/video.py` | ✅ Done |
+| Fix `_generate_avatar_video()` → `marketing_studio_video`, underscore flags, `--avatars` JSON format | `backend/routers/video.py` | ✅ Done |
+| Set `HIGGSFIELD_AVATAR_ID` preset (Liam: `734451fd-...`) | `backend/.env` | ⚠️ Superseded (11b) — preset avatars fail; gated off |
+| Wire `higgsfield webproducts fetch` for real product screenshots (avatar + b-roll) | `backend/routers/video.py` | ⚠️ Superseded (11b) — `--web_product_ids` fails; gated off |
+| Resume-on-reopen: `checkExistingJob()` + `GET /api/v1/video/by-analysis/{id}` | `VideoPanel.tsx`, `video.py` | ✅ Done |
+| Cap avatar duration at 15s; block backdrop close during generation | `video.py`, `VideoPanel.tsx` | ⚠️ Reworked (11b) — old cap used word-count and inflated to 17-20s; now sends designed 15s |
+| Local end-to-end test: Phase A draft → Phase B generate → video renders | local | ✅ Done (11b) — 15s talking-head renders end-to-end |
+| Solve Render deployment: install + auth Higgsfield CLI on Render server | Render / `render-build.sh` | ⬜ Pending — see note |
+| Add `LYZR_AGENT_VIDEO_STRATEGIST` + all `LYZR_AGENT_*` + `USE_LYZR_STUDIO=true` + `VIDEO_MAX_DURATION=15` to Render | Render dashboard | ⬜ Pending |
+
+### Sprint 11b — Reliability fixes (all ✅ Done, `backend/routers/video.py`)
+
+The original pipeline failed on nearly every real run. Causes found & fixed (full reference:
+`video_strategist_agent.md` → "Hard Constraints & Why Generation Breaks"):
+
+| Fix | Detail |
+|---|---|
+| **Duration source** (the killer) | Backend computed duration from word count @130 WPM → inflated the agent's 15s scripts to 17–20s; `marketing_studio_video` fails at ≥17s. Now `_planned_duration()` uses `target_duration_seconds` (=15), clamped by `VIDEO_MAX_DURATION` (default 15). Proven: same script fails at 17s, renders at 15s. |
+| **`--avatars` gated off** | Preset avatars (Liam/Jayden) fail server-side. `HIGGSFIELD_USE_AVATARS` (default off). |
+| **`--setting_id` gated off** | Triggers a face-locked template that fails. `HIGGSFIELD_USE_SETTING` (default off). |
+| **`--web_product_ids` gated off** | Product screenshot used as a face reference → fails. `HIGGSFIELD_USE_WEB_PRODUCTS` (default off). |
+| **Composition off** | FFmpeg split-screen + Supabase upload disabled (`VIDEO_COMPOSE`, default off) — 50 MB bucket limit. Output = Higgsfield CDN talking-head URL. |
+| **Retry + logging** | `HIGGSFIELD_MAX_ATTEMPTS` (default 2, transient safety net); `error_text` records exact CLI cmd + flags summary; standalone `backend/scripts/higgsfield_probe.py`. |
+
+**Two-phase UX:**
+- **Phase A** — `POST /api/v1/draft` with `platform: "ugcvideo_script"` → Video Strategist agent → 15s script + shot plan shown in VideoPanel (~5-10s)
+- **Phase B** — `POST /api/v1/video/generate` → CLI subprocess: `marketing_studio_video` talking-head at `--duration 15` → async polling → video player (~5 min). (Product b-roll/composition is gated off — see 11b.)
+
+**Company type routing:** `saas`, `ecommerce_physical`, `consumer_product`, `b2b_service`, `marketplace` → image-to-video (Serper-scraped screenshots) or text-to-video (b2b_service)
+
+**V1 scope:** No FFmpeg composition — avatar and b-roll as separate URLs. Virality scoring deferred. Both deferred to Sprint 12.
+
+**Render deployment note:** The `higgsfield` CLI must be installed and authenticated on Render. Two paths:
+- **(A) Build-step auth:** Add CLI install + `higgsfield auth login --token <refresh_token>` to `render-build.sh`. Store the refresh token as a Render secret env var.
+- **(B) Local worker (recommended):** Run a local Python worker that polls `video_jobs` for `status = pending` rows and runs the CLI locally. No Render auth complexity. Implement in Sprint 12.
 
 ---
 

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+// Vendored locally (app/fonts/) instead of next/font/google to avoid a
+// build-time download from fonts.gstatic.com, which stalls on some networks
+// and hangs `next dev`. Plus Jakarta Sans ships as a single variable font.
+const plusJakartaSans = localFont({
+  src: "./fonts/PlusJakartaSans-Variable.woff2",
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: "300 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { DraftPanel } from './DraftPanel'
+import { VideoPanel } from './VideoPanel'
 import { cleanUrls, renderInline } from '@/lib/text-utils'
 
 interface AgentCardProps {
@@ -15,6 +16,8 @@ interface AgentCardProps {
   cardAction?: { label: string; itemText: string }
   inlineAction?: { label: string; itemText: string }
   description?: string
+  /** Opens VideoPanel (Phase A script → Phase B generation) instead of DraftPanel */
+  videoAction?: { label: string; itemText: string }
 }
 
 const iconDomainMap: Record<string, string> = {
@@ -39,9 +42,10 @@ const iconLabelMap: Record<string, string> = {
   geo: 'G',
 }
 
-export function AgentCard({ name, icon, statusText, items, defaultOpen = false, jobId, cardAction, inlineAction, description }: AgentCardProps) {
+export function AgentCard({ name, icon, statusText, items, defaultOpen = false, jobId, cardAction, inlineAction, description, videoAction }: AgentCardProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [draftItem, setDraftItem] = useState<string | null>(null)
+  const [videoOpen, setVideoOpen] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
 
   const domain = iconDomainMap[icon]
@@ -89,6 +93,13 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
         )}
       </div>
 
+      {/* Static description (inlineAction cards without expand) */}
+      {description && inlineAction && (
+        <div className="px-4 pb-3 pl-14">
+          <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
+        </div>
+      )}
+
       {/* Expanded Content */}
       {isOpen && !inlineAction && (
         <div className="px-4 pb-3 pt-1">
@@ -107,12 +118,23 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
             </div>
           ) : (
             <>
+              {description && videoAction && (
+                <p className="text-slate-500 text-xs leading-relaxed pb-2">{description}</p>
+              )}
               {items.length > 0 ? (
                 items.map((item, i) => (
                   <div key={i} className="flex items-start gap-2 py-1 group">
                     <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
                     <p className="text-slate-400 text-xs leading-relaxed flex-1">{renderInline(cleanUrls(item))}</p>
-                    {jobId && !cardAction && (
+                    {jobId && videoAction && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setVideoOpen(true) }}
+                        className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors shrink-0 ml-1"
+                      >
+                        {videoAction.label}
+                      </button>
+                    )}
+                    {jobId && !cardAction && !videoAction && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setDraftItem(item) }}
                         className="text-xs text-emerald-600 hover:text-emerald-400 transition-colors shrink-0 ml-1"
@@ -150,6 +172,15 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
         itemText={draftItem ?? ''}
         jobId={jobId ?? ''}
       />
+
+      {videoAction && (
+        <VideoPanel
+          isOpen={videoOpen}
+          onClose={() => setVideoOpen(false)}
+          jobId={jobId ?? ''}
+          triggerText={videoAction.itemText}
+        />
+      )}
     </div>
   )
 }

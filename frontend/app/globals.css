@@ -118,4 +118,9 @@ html.light .ring-slate-800 { --tw-ring-color: #e2e8f0; }
 html.light .sticky { background-color: #ffffff; }
 
 /* Emerald text — light tints are near-white so they need a dark override in light mode */
-html.light .text-emerald-100 { color: #065f46; } /* emerald-900 — readable on light mint bubble */
+html.light .text-emerald-100 { color: #065f46; }
+html.light .text-emerald-200 { color: #065f46; }
+html.light .text-emerald-300 { color: #047857; }
+/* Hook line card background — dark emerald tint becomes light mint in light mode */
+html.light .bg-emerald-900\/25 { background-color: rgba(209, 250, 229, 0.7); }
+html.light .border-emerald-500\/40 { border-color: rgba(16, 185, 129, 0.4); }

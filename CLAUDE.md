@@ -118,6 +118,13 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 - **Sprint 7:** Lyzr Studio 9-agent pipeline — `lyzr_studio_pipeline.py`, `cmo_chat_agent_studio.py`, `USE_LYZR_STUDIO` toggle. All env vars filled locally. Pending: Render dashboard env vars + production deploy.
 - **Sprint 8:** DraftPanel platform selector — `/api/v1/draft` endpoint, Content Writer agent wired per platform (reddit/twitter/linkedin/hackernews/blog/email), `company_name` + `hiring_signals` passed as context. Competitor URLs stored in result. UI UX polish across all 4 tabs.
 - **Sprint 10:** Password gate + shareable deep links — `proxy.ts` shared-password gate, `/login` page, `/api/auth/login` route handler, URL params (`?job=&tab=&site=`) written after analysis and synced on tab switch, deep-link auto-load on page mount. Frontend env vars: `SHARED_PASSWORD`, `SESSION_TOKEN` (Vercel only).
+- **Sprint 11:** UGC Video Generation Pipeline — Video Strategist agent (Agent 11, `LYZR_AGENT_VIDEO_STRATEGIST` set), `backend/routers/video.py` using Higgsfield CLI subprocess (OAuth auth via `~/.config/higgsfield/credentials.json`). Avatar model: `marketing_studio_video`. `VideoPanel.tsx` (Phase A script → Phase B async generation with resume-on-reopen). `video_jobs` Supabase table created with RLS enabled. (NOTE: the original preset-avatar / `--web_product_ids` / b-roll-composition design is superseded — see Sprint 11b.)
+- **Sprint 11b:** Video generation **reliability fixes** (the original pipeline failed on nearly every real run). Root causes found & fixed, all in `backend/routers/video.py`:
+  1. **Duration** — the killer. `marketing_studio_video` fails server-side (~5 min, `status: failed`, no error) on ≥17s; reliable ceiling ~15–16s. The backend was deriving duration from word count at 130 WPM (inflating 15s-designed scripts to 17–20s) and **ignoring** the agent's authoritative `target_duration_seconds=15`. Fixed: `_planned_duration()` uses the designed 15s, clamped by `VIDEO_MAX_DURATION` (default 15). **Proven:** the same script that failed 3× at 17s renders at 15s.
+  2. **Preset `--avatars`**, **`--setting_id`**, **`--web_product_ids`** each independently caused server-side failures → all gated off by default (`HIGGSFIELD_USE_AVATARS` / `HIGGSFIELD_USE_SETTING` / `HIGGSFIELD_USE_WEB_PRODUCTS`). Bare call is the only reliable config.
+  3. **Composition + Supabase upload** gated off (`VIDEO_COMPOSE`, default off) — Supabase bucket's 50 MB/file limit. Output is now the Higgsfield-CDN talking-head URL directly (free). So b-roll/product overlay is NOT in the current output.
+  4. **Retry** safety net for transient failures (`HIGGSFIELD_MAX_ATTEMPTS`, default 2); failed video jobs refund credits.
+  5. **Diagnostic logging** — `error_text` records the exact CLI command + a `[duration=… avatars=… setting_id=… web_product_ids=…]` summary. Plus a standalone probe: `backend/scripts/higgsfield_probe.py` (`--cost-only` is free; mirrors the pipeline's CLI call). Full failure-mode reference lives in `video_strategist_agent.md` → "Hard Constraints & Why Generation Breaks".
 
 ## 11. Outstanding Security Items (Do Before Going Public)
 
@@ -134,14 +141,12 @@ See `LYZR_INTEGRATION.md` Section 6 for the exact assembly mapping.
 Do NOT use `guardrails-ai` for prompt injection — the `detect_prompt_injection` validator depends on Pinecone + a separate OpenAI API call per request, with no published accuracy numbers. Use structural isolation instead: user-supplied input must only ever appear in the `user` turn of the LLM prompt, never interpolated into the `system` prompt. This is the correct defense and requires no additional libraries.
 
 ## 13. Next Steps
-**Sprints 1–8 and Sprint 10 are complete.** Remaining for Sprint 7 production: add all `LYZR_AGENT_*` env vars + `USE_LYZR_STUDIO=true` to the Render dashboard, then redeploy. Also add `SHARED_PASSWORD` + `SESSION_TOKEN` to Vercel dashboard for the password gate.
+**Sprints 1–8, 9, 10, 11 and 11b (code) are complete.** Sprint 9 (LLMs.txt Generator) is fully done — agent created in Lyzr Studio and working locally; only the Render env var remains. Supabase `video_jobs` table is created. **Local end-to-end video generation now WORKS** (15s talking-head renders reliably via the full Phase A → Phase B flow). Remaining manual steps:
 
-**Sprint 9 — GEO Agent Card + LLMs.txt Generator:**
-- Add an 8th agent card (GEO Agent) to the Agents tab, sourcing `geo_signals.geo_recommendations` from the Supabase result
-- New Lyzr Studio agent: **LLMs.txt Generator** (`LYZR_AGENT_LLMSTXT_GENERATOR`) — generates a deployment-ready `llms.txt` file for the user's company website
-- New backend endpoint: `/api/v1/draft` with `platform: "llmstxt"` branch calls the LLMs.txt Generator
-- DraftPanel copy button lets user deploy the generated file to their web root
-- See `lyzr_agents.md` Agent 10 for the full agent spec and `MASTER_PLAN.md` Sprint 9 for the task breakdown
+1. ~~Local end-to-end test~~ — ✅ done. A 15s talking-head renders end-to-end. (B-roll/product overlay is intentionally not in the output — composition is gated off; see Sprint 11b.)
+2. **Render (after local validation)** — Higgsfield videos run as a background subprocess on Render's server. Either (a) add `higgsfield` install + `higgsfield auth login --token <refresh_token>` to `render-build.sh`, or (b) run a local worker that polls `video_jobs` for pending rows (recommended for Sprint 12). Add `LYZR_AGENT_VIDEO_STRATEGIST` + `LYZR_AGENT_LLMSTXT_GENERATOR` + all existing `LYZR_AGENT_*` vars + `USE_LYZR_STUDIO=true` + **`VIDEO_MAX_DURATION=15`** to the Render dashboard. Do NOT set `HIGGSFIELD_AVATAR_ID` active / `HIGGSFIELD_USE_*` / `VIDEO_COMPOSE` — they are intentionally off (see Sprint 11b).
+3. **Vercel** — add `SHARED_PASSWORD` + `SESSION_TOKEN`.
+4. **Sprint 12 backlog** — (a) shorter agent scripts so 15s isn't rushed; (b) re-enable product b-roll only by composing short clips (≤15s each) — needs a video-hosting target since composed files exceed the 50 MB Supabase bucket; (c) wire brain-activity virality scoring; (d) local worker for Render CLI auth. Note: true 18–20s single-take is blocked by Higgsfield's ~16s render cliff (`multi_shots` is not CLI-controllable).
 
 **Security hardening is on the backburner** — do not implement rate limiting on `/api/v1/chat`, Supabase Auth, or RLS until explicitly requested.
 

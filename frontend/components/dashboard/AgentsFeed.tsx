@@ -167,6 +167,8 @@ export function AgentsFeed({ report, jobId }: AgentsFeedProps) {
           statusText="1 video ready"
           items={ugcItems}
           jobId={jobId}
+          videoAction={{ label: 'Script & Film →', itemText: wso[0] || ugcItems[0] }}
+          description="Generates a 30-60 second short-form ad with an AI avatar, hook script, and product b-roll — optimised for YouTube Shorts and Instagram Reels."
         />
 
         {/* 8. GEO Agent */}

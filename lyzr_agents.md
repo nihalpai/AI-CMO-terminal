@@ -569,3 +569,28 @@ Firebase dominates BaaS search but carries community resentment around vendor lo
 - [GitHub](https://github.com/supabase/supabase): Open-source repository and community discussions
 - [Status](https://status.supabase.com): Platform uptime and incident history
 ```
+
+---
+
+## Agent 11: Video Strategist
+
+**Role:** `Video Marketing Strategist`
+
+**Goal:**
+```
+To design a complete, production-ready short-form video strategy for a company based on its competitive analysis, selecting the optimal 2026 retention hook, avatar style, b-roll approach, and shot-by-shot script that maximises viral potential within 15 seconds.
+```
+
+> ⚠️ **15 seconds is a HARD limit, not 30–60.** The Higgsfield render engine fails on videos ≥17s, and `target_duration_seconds` is schema-pinned to 15. Scripts must be ≤40 words and shot durations must sum to ~15. See `video_strategist_agent.md` → "Hard Constraints & Why Generation Breaks" for the full list of what makes generation fail.
+
+**Temperature:** 0.7 | **Tool:** None | **Model:** Claude Haiku | **Structured Output:** On
+
+**Env var:** `LYZR_AGENT_VIDEO_STRATEGIST`
+
+**Called from:** `/api/v1/draft` when `platform == "ugcvideo_script"` (triggered by UGC Videos Agent card "Script & Film →" button)
+
+**Session ID:** Use `job_id` as `session_id` — same isolation rule as Content Writer and LLMs.txt Generator.
+
+**Output:** Raw JSON string matching `VideoStrategistSchema`. `VideoPanel.tsx` parses with `JSON.parse(data.reply)`.
+
+See `video_strategist_agent.md` for the complete spec: full instructions, structured output schema, example output, and company type routing table.
