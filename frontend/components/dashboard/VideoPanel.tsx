@@ -45,11 +45,34 @@ type VideoJob = {
   created_at?: string
 }
 
+type YtStatus = 'none' | 'uploading' | 'completed' | 'error'
+
+type YtInfo = {
+  status: YtStatus
+  uploadId?: string
+  watchUrl?: string | null
+  nextAllowedAt?: string | null
+  error?: string
+}
+
 interface VideoPanelProps {
   isOpen: boolean
   onClose: () => void
   jobId: string
   triggerText: string
+}
+
+// Human label for the re-upload cooldown, e.g. "in 5 days".
+function nextAllowedLabel(iso?: string | null): string {
+  if (!iso) return ''
+  const ms = new Date(iso).getTime() - Date.now()
+  if (ms <= 0) return ''
+  const days = Math.ceil(ms / 86_400_000)
+  return days >= 1 ? `in ${days} day${days > 1 ? 's' : ''}` : 'soon'
+}
+
+function isGated(iso?: string | null): boolean {
+  return !!iso && new Date(iso).getTime() > Date.now()
 }
 
 // ── Progress steps ─────────────────────────────────────────────────────────
@@ -122,7 +145,9 @@ export function VideoPanel({ isOpen, onClose, jobId, triggerText }: VideoPanelPr
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [copied, setCopied] = useState(false)
+  const [ytState, setYtState] = useState<Record<string, YtInfo>>({})
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const ytPollRefs = useRef<Record<string, ReturnType<typeof setInterval>>>({})
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -173,8 +198,18 @@ export function VideoPanel({ isOpen, onClose, jobId, triggerText }: VideoPanelPr
 
   // Clean up polling on unmount
   useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      Object.values(ytPollRefs.current).forEach(clearInterval)
+    }
   }, [])
+
+  // When a video is expanded, hydrate its YouTube upload state once.
+  useEffect(() => {
+    if (expandedVideoId && ytState[expandedVideoId] === undefined) {
+      loadYouTube(expandedVideoId)
+    }
+  }, [expandedVideoId])
 
   function resetPanel() {
     setPhase('idle')
@@ -186,7 +221,10 @@ export function VideoPanel({ isOpen, onClose, jobId, triggerText }: VideoPanelPr
     setExpandedVideoId(null)
     setErrorMessage('')
     setCopied(false)
+    setYtState({})
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    Object.values(ytPollRefs.current).forEach(clearInterval)
+    ytPollRefs.current = {}
   }
 
   async function fetchHistory() {
@@ -194,6 +232,81 @@ export function VideoPanel({ isOpen, onClose, jobId, triggerText }: VideoPanelPr
       const res = await fetch(`${API_BASE}/api/v1/video/history/${jobId}`)
       if (res.ok) setVideoHistory(await res.json())
     } catch {}
+  }
+
+  // ── YouTube Shorts upload ──────────────────────────────────────────────────
+
+  function setYt(videoId: string, info: YtInfo) {
+    setYtState((s) => ({ ...s, [videoId]: info }))
+  }
+
+  async function loadYouTube(videoId: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/youtube/by-video/${videoId}`)
+      if (!res.ok) { setYt(videoId, { status: 'none' }); return }
+      const d = await res.json()
+      const status: YtStatus =
+        d.status === 'completed' ? 'completed'
+        : d.status === 'uploading' ? 'uploading'
+        : d.status === 'error' ? 'error' : 'none'
+      setYt(videoId, {
+        status,
+        uploadId: d.id,
+        watchUrl: d.watch_url,
+        nextAllowedAt: d.next_allowed_at,
+        error: d.error_text,
+      })
+      if (status === 'uploading' && d.id) pollYouTube(videoId, d.id)
+    } catch {
+      setYt(videoId, { status: 'none' })
+    }
+  }
+
+  async function uploadYouTube(videoId: string) {
+    const prev = ytState[videoId]
+    setYt(videoId, { ...prev, status: 'uploading', error: undefined })
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/youtube/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_job_id: videoId }),
+      })
+      if (res.status === 429) {
+        const d = await res.json().catch(() => ({}))
+        setYt(videoId, {
+          status: prev?.watchUrl ? 'completed' : 'none',
+          watchUrl: prev?.watchUrl,
+          nextAllowedAt: d.next_allowed_at ?? prev?.nextAllowedAt,
+        })
+        return
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const d = await res.json()
+      setYt(videoId, { status: 'uploading', uploadId: d.upload_id })
+      pollYouTube(videoId, d.upload_id)
+    } catch (err) {
+      setYt(videoId, { status: 'error', error: err instanceof Error ? err.message : 'Upload failed.' })
+    }
+  }
+
+  function pollYouTube(videoId: string, uploadId: string) {
+    if (ytPollRefs.current[videoId]) clearInterval(ytPollRefs.current[videoId])
+    ytPollRefs.current[videoId] = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/youtube/status/${uploadId}`)
+        if (!res.ok) return
+        const d = await res.json()
+        if (d.status === 'completed') {
+          clearInterval(ytPollRefs.current[videoId]); delete ytPollRefs.current[videoId]
+          setYt(videoId, { status: 'completed', uploadId, watchUrl: d.watch_url, nextAllowedAt: d.next_allowed_at })
+        } else if (d.status === 'error') {
+          clearInterval(ytPollRefs.current[videoId]); delete ytPollRefs.current[videoId]
+          setYt(videoId, { status: 'error', uploadId, error: d.error_text ?? 'Upload failed.' })
+        }
+      } catch {
+        // transient — keep polling
+      }
+    }, 5000) // YouTube upload of a 15s clip is quick; poll every 5s
   }
 
   // ── Phase A: script generation ───────────────────────────────────────────
@@ -521,6 +634,47 @@ export function VideoPanel({ isOpen, onClose, jobId, triggerText }: VideoPanelPr
                           >
                             ↓ Download {label}
                           </a>
+
+                          {/* YouTube Shorts upload */}
+                          {(() => {
+                            const yt = ytState[v.id ?? ''] ?? { status: 'none' as YtStatus }
+                            const gated = isGated(yt.nextAllowedAt)
+                            return (
+                              <div className="space-y-2 pt-1">
+                                {yt.status === 'completed' && yt.watchUrl && (
+                                  <a
+                                    href={yt.watchUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-full text-center rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition-colors"
+                                  >
+                                    ▶ Watch on YouTube
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => v.id && uploadYouTube(v.id)}
+                                  disabled={yt.status === 'uploading' || gated}
+                                  className="w-full rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed border border-red-500/40 disabled:border-slate-700 px-3 py-2 text-xs font-semibold text-white transition-colors"
+                                >
+                                  {yt.status === 'uploading'
+                                    ? 'Uploading to YouTube…'
+                                    : gated
+                                      ? `Re-upload available ${nextAllowedLabel(yt.nextAllowedAt)}`
+                                      : yt.status === 'completed'
+                                        ? '↑ Upload again as Short'
+                                        : '↑ Upload to YouTube Short'}
+                                </button>
+                                {yt.status === 'error' && yt.error && (
+                                  <p className="text-[10px] text-red-400/70">{yt.error}</p>
+                                )}
+                                {(gated || yt.status === 'completed') && (
+                                  <p className="text-[10px] text-slate-500 text-center">
+                                    One upload per video every 7 days.
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>

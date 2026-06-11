@@ -9,3 +9,7 @@ httpx<0.28.0
 python-dotenv
 pydantic
 firecrawl-py
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
