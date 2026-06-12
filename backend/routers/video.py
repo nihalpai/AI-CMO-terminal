@@ -529,8 +529,17 @@ async def generate_video(
 
 @router.get("/api/v1/video/by-analysis/{analysis_job_id}")
 async def get_video_by_analysis(analysis_job_id: str) -> JSONResponse:
-    """Return the most recent video job for a given analysis job. 404 if none exists."""
+    """Return the most recent completed video job, falling back to most recent of any status. 404 if none exists."""
     def _query():
+        completed = _supabase.table("video_jobs") \
+            .select("id, status, avatar_video_url, broll_video_url, final_video_url, virality_score, error_text") \
+            .eq("analysis_job_id", analysis_job_id) \
+            .eq("status", "completed") \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .execute()
+        if completed.data:
+            return completed
         return _supabase.table("video_jobs") \
             .select("id, status, avatar_video_url, broll_video_url, final_video_url, virality_score, error_text") \
             .eq("analysis_job_id", analysis_job_id) \
@@ -541,7 +550,6 @@ async def get_video_by_analysis(analysis_job_id: str) -> JSONResponse:
     row = await asyncio.to_thread(_query)
     if not row.data:
         raise HTTPException(status_code=404, detail="No video job found")
-
     return JSONResponse(row.data[0])
 
 
