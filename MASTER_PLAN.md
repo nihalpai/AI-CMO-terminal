@@ -201,7 +201,7 @@ See `lyzr_agents.md` Agent 10 for the full LLMs.txt Generator agent spec (role, 
 
 ---
 
-## 🚧 Sprint 11 — UGC Video Generation Pipeline (CURRENT)
+## ✅ Sprint 11 — UGC Video Generation Pipeline (COMPLETE)
 
 **Goal:** Replace the UGC Videos Agent script stub with a full AI-driven short-form video production pipeline powered by Higgsfield CLI.
 
@@ -263,11 +263,40 @@ rendering is decoupled from the web server:
 
 **Company type routing:** `saas`, `ecommerce_physical`, `consumer_product`, `b2b_service`, `marketplace` → image-to-video (Serper-scraped screenshots) or text-to-video (b2b_service)
 
-**V1 scope:** No FFmpeg composition — avatar and b-roll as separate URLs. Virality scoring deferred. Both deferred to Sprint 12.
+**V1 scope:** No FFmpeg composition — avatar and b-roll as separate URLs. Virality scoring deferred. Both deferred to Sprint 13 (video composition + virality).
 
 **Render deployment note:** The `higgsfield` CLI must be installed and authenticated on Render. Two paths:
 - **(A) Build-step auth:** Add CLI install + `higgsfield auth login --token <refresh_token>` to `render-build.sh`. Store the refresh token as a Render secret env var.
-- **(B) Local worker (recommended):** Run a local Python worker that polls `video_jobs` for `status = pending` rows and runs the CLI locally. No Render auth complexity. Implement in Sprint 12.
+- **(B) Local worker (recommended):** Run a local Python worker that polls `video_jobs` for `status = pending` rows and runs the CLI locally. No Render auth complexity. ✅ Done in Sprint 11c (Oracle VM worker).
+
+---
+
+## ✅ Sprint 12 — YouTube Shorts Upload (COMPLETE)
+
+**Goal:** From the VideoPanel, let a user upload any completed UGC video to YouTube as a Short with **one click** — and after it lands, a "Watch on YouTube" button appears. Same video re-uploadable only once every 7 days. 100% free.
+
+**Architecture:** Single-channel server-credential model. The app holds ONE long-lived OAuth refresh token for ONE dedicated YouTube channel and uploads on behalf of all users via the official YouTube Data API v3 `videos.insert` — so the click needs no per-user Google login. Runs in the **Render web process** (not the Oracle VM — it's a plain HTTPS call, the clip is a few MB).
+
+| Task | File | Status |
+|---|---|---|
+| New router: `/upload`, `/status/{id}`, `/by-video/{id}` endpoints | `backend/routers/youtube.py` | ✅ Done |
+| One-time refresh-token minter | `backend/scripts/get_youtube_token.py` | ✅ Done |
+| Wire router in `main.py` (`include_router` only) | `backend/main.py` | ✅ Done |
+| Google client libs | `backend/requirements.txt` | ✅ Done |
+| Upload / Watch buttons + 7-day cooldown UI + resume-on-reopen | `frontend/components/dashboard/VideoPanel.tsx` | ✅ Done |
+| `youtube_uploads` tracking table | Supabase SQL editor | ✅ Done |
+| Dedicated Google account + channel, Cloud project, YouTube Data API v3 enabled, OAuth consent (Production), OAuth client | Google Cloud Console | ✅ Done |
+| `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` / `YOUTUBE_PRIVACY=private` / `YOUTUBE_REUPLOAD_DAYS=7` | `backend/.env` + Render | ✅ Done |
+| Local end-to-end test — upload → appears in YouTube Studio as a Short | local | ✅ Done — verified |
+
+**Visibility (private → public):** Un-audited Google projects FORCE uploads to **Private** (the upload is real and shows in YouTube Studio → Content → Shorts, but not on the public channel / youtube.com browse). This is expected. Two ways to make a Short public:
+- **Manual:** toggle Private → Public per-video in YouTube Studio (owner can do this anytime).
+- **Automatic (the goal):** submit the free **YouTube API Services Audit**, then set `YOUTUBE_PRIVACY=public` + redeploy — uploads then go straight to public, no manual step. ⬜ Audit pending (does not block the feature). NOTE: don't set `YOUTUBE_PRIVACY=public` before audit — the API overrides it back to private.
+
+**Key gotchas (also in `CLAUDE.md` §10 Sprint 12):**
+- OAuth consent screen **must be "In production"**, else the refresh token expires after 7 days and breaks weekly uploads.
+- 15s/9:16 clips auto-qualify as Shorts → watch URL `https://www.youtube.com/shorts/{id}`.
+- `GET /by-video/{id}` returning **404** for a never-uploaded video is normal (UI reads it as "not uploaded yet").
 
 ---
 

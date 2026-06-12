@@ -162,7 +162,12 @@ AI-driven short-form video. Video Strategist agent (Agent 11) classifies company
 
 > **Sprint 11c — production worker (done).** The Higgsfield CLI is OAuth-based (no static API key) and can't run on Render's ephemeral box. Solved with a **queue + remote worker**: Render only enqueues (`USE_VIDEO_WORKER=true`) a `pending` row into the `video_jobs` table; a free **Oracle Cloud Always-Free VM** runs `backend/scripts/video_worker.py` 24/7 (systemd), where the CLI is authenticated, and renders by polling that table. They communicate only through Supabase. Setup runbook: `backend/scripts/WORKER_SETUP.md`. See `CLAUDE.md` Sprint 11c for the full architecture + gotchas (status CHECK constraint, no double-renderers, re-auth maintenance).
 
-### 🔜 Sprint 12 — Video Composition + Virality Scoring
+### ✅ Sprint 12 — YouTube Shorts Upload (working end-to-end)
+One-click upload of any completed UGC video to YouTube as a Short, with a "Watch on YouTube" button that appears once it lands and a 7-day per-video re-upload cooldown. Single-channel server-credential model — the app holds one long-lived OAuth refresh token for one dedicated channel and uploads on everyone's behalf via the official YouTube Data API v3 (`videos.insert`), so the click needs no per-user login. Runs in the Render web process (not the Oracle VM). `backend/routers/youtube.py`, `backend/scripts/get_youtube_token.py`, `VideoPanel.tsx` buttons, `youtube_uploads` Supabase table. **Verified:** uploads land in YouTube Studio as Shorts.
+
+> **Visibility note.** Un-audited Google projects force uploads to **Private** (real upload, visible in YouTube Studio, not on the public channel). Make a Short public by toggling it manually in Studio, or — for true one-click public — submit the free YouTube API audit and set `YOUTUBE_PRIVACY=public`. Audit pending; does not block the feature.
+
+### 🔜 Sprint 13 — Video Composition + Virality Scoring
 Re-enable product b-roll by composing **short** clips (≤15s each, to stay under the render cliff) into one ad — needs a video-hosting target since composed files exceed the 50 MB Supabase bucket. Tighten agent scripts so 15s isn't rushed. Wire Higgsfield brain-activity virality scoring.
 
 ### Future
