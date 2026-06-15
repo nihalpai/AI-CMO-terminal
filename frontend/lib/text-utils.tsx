@@ -13,12 +13,14 @@ export function cleanUrls(text: string): string {
 }
 
 export function renderInline(text: string, strongClassName = 'font-semibold'): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) =>
-    part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i} className={strongClassName}>{part.slice(2, -2)}</strong>
-      : <React.Fragment key={i}>{part}</React.Fragment>
-  )
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={i} className={strongClassName}>{part.slice(2, -2)}</strong>
+    if (part.startsWith('*') && part.endsWith('*'))
+      return <em key={i}>{part.slice(1, -1)}</em>
+    return <React.Fragment key={i}>{part}</React.Fragment>
+  })
 }
 
 export function renderBlocks(text: string): React.ReactNode {
