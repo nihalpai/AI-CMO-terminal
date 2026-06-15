@@ -38,10 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routers import agents as agents_router, company as company_router, watchlist as watchlist_router, video as video_router, youtube as youtube_router
+from routers import agents as agents_router, video as video_router, youtube as youtube_router
 app.include_router(agents_router.router)
-app.include_router(company_router.router)
-app.include_router(watchlist_router.router)
 app.include_router(video_router.router)
 app.include_router(youtube_router.router)
 
@@ -118,14 +116,6 @@ async def get_job_status(job_id: str) -> JSONResponse:
     if not response.data:
         return JSONResponse({"status": "processing", "result": None})
     return JSONResponse(response.data[0])
-
-
-@app.post("/api/v1/digest/run")
-async def run_digest(user_email: str = "user@example.com") -> JSONResponse:
-    """Manually trigger the weekly digest email."""
-    from services.weekly_digest import send_weekly_digest
-    result = await asyncio.to_thread(send_weekly_digest, user_email)
-    return JSONResponse(result)
 
 
 @app.post("/api/v1/analyze", status_code=202)

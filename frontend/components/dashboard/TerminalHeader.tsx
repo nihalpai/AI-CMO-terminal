@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
 import { Moon, Sun, Bot } from 'lucide-react'
-import Image from 'next/image'
 import { useTheme } from '@/lib/theme'
+import { CompanyLogo } from '@/components/CompanyLogo'
 
 interface TerminalHeaderProps {
   companyDomain: string
@@ -11,26 +10,18 @@ interface TerminalHeaderProps {
 
 export function TerminalHeader({ companyDomain }: TerminalHeaderProps) {
   const { theme, toggleTheme } = useTheme()
-  const [logoFailed, setLogoFailed] = useState(false)
 
   return (
     <div className="h-12 w-full flex items-center justify-between px-4 bg-slate-950 border-b border-slate-800 shrink-0">
       {/* Left: Company selector pill */}
       <div className="bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 flex items-center gap-2 cursor-pointer border border-slate-700 transition-colors">
         <div className="w-4 h-4 rounded bg-white flex items-center justify-center overflow-hidden shrink-0">
-          {logoFailed ? (
-            <span className="text-xs leading-none">🛡️</span>
-          ) : (
-            <Image
-              src={`https://www.google.com/s2/favicons?sz=64&domain=${companyDomain}`}
-              alt={companyDomain}
-              width={16}
-              height={16}
-              className="object-contain"
-              onError={() => setLogoFailed(true)}
-              unoptimized
-            />
-          )}
+          <CompanyLogo
+            domain={companyDomain}
+            size={16}
+            className="object-contain"
+            fallback={<span className="text-xs leading-none">🛡️</span>}
+          />
         </div>
         <span className="text-slate-200 text-xs font-medium truncate max-w-[140px]">{companyDomain}</span>
       </div>

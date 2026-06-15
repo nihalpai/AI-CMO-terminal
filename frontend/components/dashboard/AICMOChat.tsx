@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { ArrowUp } from 'lucide-react'
+import { renderInline } from '@/lib/text-utils'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -27,14 +28,7 @@ i can help you with:
 how would you like to proceed?`,
 }
 
-function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) =>
-    part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i} className="text-slate-100 font-semibold">{part.slice(2, -2)}</strong>
-      : <React.Fragment key={i}>{part}</React.Fragment>
-  )
-}
+const CHAT_STRONG = 'text-slate-100 font-semibold'
 
 function AssistantBubble({ content }: { content: string }) {
   const blocks = content.split(/\n{2,}/)
@@ -48,7 +42,7 @@ function AssistantBubble({ content }: { content: string }) {
           return (
             <ul key={i} className="list-disc list-inside space-y-0.5 pl-1">
               {lines.filter((l) => l.trim()).map((line, j) => (
-                <li key={j}>{renderInline(line.replace(/^[-•]\s*/, ''))}</li>
+                <li key={j}>{renderInline(line.replace(/^[-•]\s*/, ''), CHAT_STRONG)}</li>
               ))}
             </ul>
           )
@@ -58,7 +52,7 @@ function AssistantBubble({ content }: { content: string }) {
             {lines.map((line, j) => (
               <React.Fragment key={j}>
                 {j > 0 && <br />}
-                {renderInline(line)}
+                {renderInline(line, CHAT_STRONG)}
               </React.Fragment>
             ))}
           </p>

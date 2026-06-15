@@ -12,11 +12,11 @@ export function cleanUrls(text: string): string {
     .trim()
 }
 
-export function renderInline(text: string): React.ReactNode {
+export function renderInline(text: string, strongClassName = 'font-semibold'): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return parts.map((part, i) =>
     part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>
+      ? <strong key={i} className={strongClassName}>{part.slice(2, -2)}</strong>
       : <React.Fragment key={i}>{part}</React.Fragment>
   )
 }

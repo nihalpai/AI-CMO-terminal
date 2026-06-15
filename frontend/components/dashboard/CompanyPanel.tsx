@@ -1,23 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
-import Image from 'next/image'
-
-function CompanyLogo({ domain, size, fallback }: { domain: string; size: number; fallback: React.ReactNode }) {
-  const [failed, setFailed] = useState(false)
-  if (failed) return <>{fallback}</>
-  return (
-    <Image
-      src={`https://www.google.com/s2/favicons?sz=64&domain=${domain}`}
-      alt={domain}
-      width={size}
-      height={size}
-      className="rounded object-contain"
-      onError={() => setFailed(true)}
-      unoptimized
-    />
-  )
-}
+import { CompanyLogo } from '@/components/CompanyLogo'
 
 type Competitor = string | { name: string; url: string }
 

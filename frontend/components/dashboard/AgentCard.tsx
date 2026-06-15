@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
-import Image from 'next/image'
 import { DraftPanel } from './DraftPanel'
 import { VideoPanel } from './VideoPanel'
 import { cleanUrls, renderInline } from '@/lib/text-utils'
+import { CompanyLogo } from '@/components/CompanyLogo'
 
 interface AgentCardProps {
   name: string
@@ -46,7 +46,6 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [draftItem, setDraftItem] = useState<string | null>(null)
   const [videoOpen, setVideoOpen] = useState(false)
-  const [logoFailed, setLogoFailed] = useState(false)
 
   const domain = iconDomainMap[icon]
   const label = iconLabelMap[icon] ?? icon.slice(0, 1).toUpperCase()
@@ -60,15 +59,13 @@ export function AgentCard({ name, icon, statusText, items, defaultOpen = false, 
       >
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200/10">
-            {domain && !logoFailed ? (
-              <Image
-                src={`https://www.google.com/s2/favicons?sz=64&domain=${domain}`}
+            {domain ? (
+              <CompanyLogo
+                domain={domain}
+                size={20}
                 alt={name}
-                width={20}
-                height={20}
                 className="object-contain"
-                onError={() => setLogoFailed(true)}
-                unoptimized
+                fallback={<span className="text-xs font-medium text-slate-600">{label}</span>}
               />
             ) : (
               <span className="text-xs font-medium text-slate-600">{label}</span>
