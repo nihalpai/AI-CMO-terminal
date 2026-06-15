@@ -76,6 +76,16 @@ def run_analysis(url: str, job_id: str = "pipeline") -> dict:
         }, session_id=sid)
         website_research.append(research)
 
+    # Collect target company risk signals from Website Researcher Step 0 output (deduplicated)
+    seen = set()
+    target_risks = []
+    for r in website_research:
+        for risk in r.get("target_risks", []):
+            if risk not in seen:
+                seen.add(risk)
+                target_risks.append(risk)
+    target_risks = target_risks[:3]
+
     # Step 4: Synthesize pain points from all website research
     pain_points_result = call_agent(PAIN_POINTS_ID, website_research, session_id=sid)
 
@@ -108,6 +118,7 @@ def run_analysis(url: str, job_id: str = "pipeline") -> dict:
         "geo_score": geo_result.get("geo_score", 0),
         "ai_visibility": geo_result.get("ai_visibility", "Moderate"),
         "competitor_seo_dominance": seo_result.get("competitor_seo_dominance", []),
+        "target_company_risks": target_risks,
     }, session_id=sid)
 
     # Step 8: Hiring signals (stays in Python — unchanged from original pipeline)
@@ -120,15 +131,24 @@ def run_analysis(url: str, job_id: str = "pipeline") -> dict:
     )
 
 
+def _clean_snippet(text: str) -> str:
+    """Strip markdown image tags, links, and HTML from job description snippets."""
+    text = re.sub(r'!\[.*?\]\(.*?\)', '', text)   # markdown images: [![alt](url)]
+    text = re.sub(r'\[.*?\]\(.*?\)', '', text)     # markdown links: [text](url)
+    text = re.sub(r'<[^>]+>', '', text)            # HTML tags
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
 def _format_hiring_signals(raw: dict, competitor_names: list[str]) -> list[str]:
     signals = []
     for comp in raw.get("competitors", []):
         name = comp.get("name", "")
         for job in comp.get("job_posts", [])[:1]:
             title = job.get("title", "")
-            snippet = job.get("description_snippet", "")
+            snippet = _clean_snippet(job.get("description_snippet", ""))
             if title and snippet:
-                signals.append(f"{name}: Hiring {title} signals {snippet[:100]}")
+                signals.append(f"{name}: Hiring {title} signals {snippet[:120]}")
     if not signals:
         for name in competitor_names[:2]:
             signals.append(
